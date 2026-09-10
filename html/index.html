@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>XS-TaxiJob</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="terminal" class="hidden">
+    <div class="panel">
+        <header>
+            <div class="brand">
+                <span class="lamp"></span>
+                <div>
+                    <h1>Downtown Cab Co.</h1>
+                    <p id="driver-line">Driver terminal</p>
+                </div>
+            </div>
+            <button id="close" type="button" class="ghost">Close</button>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="shift">Shift</button>
+            <button class="tab" data-tab="vehicles">Cabs</button>
+            <button class="tab" data-tab="stats">Record</button>
+            <button class="tab" data-tab="leaderboard">Board</button>
+        </nav>
+
+        <main id="panel"></main>
+    </div>
+</div>
+
+<div id="meter" class="hidden">
+    <div class="meter-head">
+        <span class="dot"></span>
+        <span id="meter-title">Off duty</span>
+        <span id="meter-vehicle"></span>
+    </div>
+    <div id="meter-amount">$0</div>
+    <div class="meter-grid">
+        <div><span id="meter-distance">0m</span><label>Distance</label></div>
+        <div><span id="meter-time">0:00</span><label>Time</label></div>
+        <div><span id="meter-rating">5.0</span><label>Rating</label></div>
+    </div>
+    <div id="meter-route"></div>
+    <div id="meter-totals"></div>
+</div>
+
+<div id="hails"></div>
+
+<div id="summary" class="hidden">
+    <div class="summary-card">
+        <h2>Fare complete</h2>
+        <div class="summary-rows" id="summary-rows"></div>
+        <button id="summary-close" type="button">Nice</button>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/meter.js"></script>
+<script src="js/panels/shift.js"></script>
+<script src="js/panels/vehicles.js"></script>
+<script src="js/panels/stats.js"></script>
+<script src="js/panels/leaderboard.js"></script>
+
+</body>
+</html>
