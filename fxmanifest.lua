@@ -31,6 +31,7 @@ client_scripts {
     'client/uniform.lua',
     'client/main.lua',
     'client/admin.lua',
+    'client/dispatcher.lua',
     -- After main.lua: these read the shift/cab state it owns.
     'client/vehicle.lua',
     'client/meter.lua',

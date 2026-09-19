@@ -469,8 +469,10 @@ input:focus, select:focus {
     border: 1px solid var(--line-2);
     border-radius: var(--radius);
     padding: 14px 16px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 18px 50px rgba(0,0,0,.6);
+    /* No backdrop-filter. Over a transparent page CEF has nothing to blur and
+       paints the filtered region black instead — a box far bigger than the
+       card, because the shadow goes opaque with it. */
+    box-shadow: 0 10px 26px rgba(0,0,0,.5);
     animation: fadeUp .26s var(--ease) both;
 }
 
@@ -558,8 +560,10 @@ input:focus, select:focus {
     border-left: 2px solid var(--amber);
     border-radius: var(--radius-sm);
     padding: 12px 14px;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 14px 38px rgba(0,0,0,.55);
+    /* No backdrop-filter. Over a transparent page CEF has nothing to blur and
+       paints the filtered region black instead — a box far bigger than the
+       card, because the shadow goes opaque with it. */
+    box-shadow: 0 10px 24px rgba(0,0,0,.45);
     animation: slideIn .26s var(--ease) both;
 }
 
@@ -581,8 +585,7 @@ input:focus, select:focus {
     inset: 0;
     display: grid;
     place-items: center;
-    background: rgba(4,5,7,.65);
-    backdrop-filter: blur(3px);
+    background: rgba(4,5,7,.72);
 }
 
 .summary-card {

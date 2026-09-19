@@ -130,6 +130,37 @@ function EndShift()
     return result
 end
 
+--[[ Opening the terminal without walking back to the depot.
+
+     There was no way to do it from the driver's seat, which is where a driver
+     spends the whole shift — signing off meant driving back and getting out
+     to look at a screen about the cab you were sat in.
+
+     Away from the depot it is the DRIVER'S terminal, so it needs a shift. At
+     the depot it is the depot's and anyone can use it. ]]
+RegisterCommand(Config.Depot.command, function()
+    if Taxi.uiOpen then
+        CloseTerminal()
+        return
+    end
+
+    if not Taxi.onDuty then
+        local here = GetEntityCoords(PlayerPedId())
+        local depot = Config.Depot.terminal.coords
+
+        if #(here - vec3(depot.x, depot.y, depot.z)) > Config.Depot.useRange then
+            Framework.Notify('Sign on at the depot first.', 'error')
+            return
+        end
+    end
+
+    OpenTerminal()
+end, false)
+
+if Config.Depot.key ~= '' then
+    RegisterKeyMapping(Config.Depot.command, 'Open the cab terminal', 'keyboard', Config.Depot.key)
+end
+
 RegisterNetEvent('XS-TaxiJob:client:forceEndShift', function()
     if not Taxi.onDuty then return end
 

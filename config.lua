@@ -44,6 +44,32 @@ Config.Depot.terminal = {
     label    = 'Taxi terminal',
 }
 
+-- The dispatcher. A person to talk to rather than a circle on the floor.
+-- Switch this off, or run no target resource, and the terminal zone above is
+-- used instead — an entity is not something the built-in marker fallback can
+-- interact with.
+Config.Depot.dispatcher = {
+    enabled  = true,
+    model    = 'a_m_m_business_01',
+    coords   = vec4(895.47, -178.92, 73.70, 242.21),
+    scenario = 'WORLD_HUMAN_CLIPBOARD',
+    label    = 'Talk to the dispatcher',
+    distance = 2.0,
+}
+
+-- Opens the terminal from wherever you are. At the depot anybody can use it;
+-- away from it, only a driver already signed on — so the cab has a terminal in
+-- it without the depot becoming something you can skip.
+Config.Depot.command = 'cab'
+
+-- A key for the same thing. Left empty so it cannot fight another resource for
+-- a binding; players set it themselves under Settings, Key Bindings, FiveM.
+-- Put something like 'F6' here to ship a default.
+Config.Depot.key = ''
+
+-- How far from the depot counts as being at it, for the command above.
+Config.Depot.useRange = 25.0
+
 -- Cab spawn and return slots. A free slot is picked on rental; returning
 -- means parking within Config.Vehicles.returnDistance of any of them.
 Config.Depot.cabSpawns = {

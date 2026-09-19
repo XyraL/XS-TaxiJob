@@ -53,6 +53,46 @@ function Target.addZone(id, zone, onSelect)
     builtinZones[id] = { zone = zone, onSelect = onSelect }
 end
 
+--[[ An interaction on a ped rather than on a patch of ground.
+
+     Returns false when the running target resource cannot do entities, so the
+     caller can put a zone down instead and the depot still works. The builtin
+     fallback has no concept of an entity, so it is one of those. ]]
+function Target.addPed(id, ped, label, distance, onSelect)
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return false end
+
+    if Target.name == 'ox_target' then
+        exports.ox_target:addLocalEntity(ped, {
+            {
+                name = id,
+                label = label,
+                icon = 'fa-solid fa-taxi',
+                distance = distance or 2.0,
+                onSelect = onSelect,
+            },
+        })
+        return true
+    end
+
+    if Target.name == 'qb-target' then
+        exports['qb-target']:AddTargetEntity(ped, {
+            options = { { label = label, icon = 'fas fa-taxi', action = onSelect } },
+            distance = distance or 2.0,
+        })
+        return true
+    end
+
+    return false
+end
+
+function Target.removePed(id, ped)
+    if Target.name == 'ox_target' then
+        if ped and DoesEntityExist(ped) then exports.ox_target:removeLocalEntity(ped, { id }) end
+    elseif Target.name == 'qb-target' then
+        if ped and DoesEntityExist(ped) then exports['qb-target']:RemoveTargetEntity(ped) end
+    end
+end
+
 function Target.removeZone(id)
     if Target.name == 'ox_target' then
         exports.ox_target:removeZone(id)
