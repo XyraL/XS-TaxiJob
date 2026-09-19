@@ -209,6 +209,11 @@ local function runFare(fare)
 
     local deadline = GetGameTimer() + (Config.Fares.pickupTimeout * 1000)
 
+    -- On the fare, so the meter can count it down. It was a local, which is
+    -- why the pickup running out was a silent failure: the first the driver
+    -- knew about it was being told the fare had given up.
+    fare.deadline = deadline
+
     -- A player walks to you, so you have to get close. An NPC comes to the
     -- cab, so you only have to get near enough for them to see you.
     local reach = fare.kind == 'player'

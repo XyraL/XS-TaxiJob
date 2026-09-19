@@ -147,6 +147,16 @@ function StartMeterLoop()
                     pickup = Taxi.fare and Taxi.fare.pickup and Taxi.fare.pickup.label or nil,
                     dropoff = Taxi.fare and Taxi.fare.dropoff and Taxi.fare.dropoff.label or nil,
                     openEnded = Taxi.fare and Taxi.fare.openEnded or false,
+
+                    -- What the unit needs to say something different in each
+                    -- state. All of it already existed somewhere; none of it
+                    -- was ever sent.
+                    kind = Taxi.fare and Taxi.fare.kind or nil,
+                    night = Taxi.fare and Taxi.fare.night or false,
+                    crossTown = Taxi.fare and Taxi.fare.crossTown or false,
+                    flagfall = Config.Meter.flagfall,
+                    pickupIn = pickupSecondsLeft(),
+                    away = distanceToTarget(),
                     totals = Taxi.totals,
                     vehicle = Taxi.vehicle and Taxi.vehicle.label or nil,
                 },
@@ -158,6 +168,27 @@ function StartMeterLoop()
         loopRunning = false
         SendNUIMessage({ action = 'meter', data = { onDuty = false } })
     end)
+end
+
+-- Seconds left to reach the pickup, or nil when that is not what is
+-- happening. The meter puts this in the big slot, so it is the thing the
+-- driver is racing rather than a deadline they cannot see.
+function pickupSecondsLeft()
+    local fare = Taxi.fare
+    if not fare or fare.stage ~= 'toPickup' or not fare.deadline then return nil end
+
+    return math.max(0, math.floor((fare.deadline - GetGameTimer()) / 1000))
+end
+
+-- How far the cab is from whatever it is heading for.
+function distanceToTarget()
+    local fare = Taxi.fare
+    if not fare then return nil end
+
+    local target = fare.stage == 'riding' and not fare.openEnded and fare.dropoff or fare.pickup
+    if not target then return nil end
+
+    return #(GetEntityCoords(PlayerPedId()) - vec3(target.x, target.y, target.z))
 end
 
 function StopMeterLoop()

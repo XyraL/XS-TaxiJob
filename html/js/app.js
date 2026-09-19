@@ -111,6 +111,14 @@ function showSummary(result) {
     // back, so the next fare you completed was headed "Shift over".
     document.querySelector('#summary h2').textContent = 'Fare complete';
 
+    // A fare finishing docks above the meter. Throwing a card over the middle
+    // of the screen with a button on it, while the driver is moving, was the
+    // wrong moment for a modal.
+    summary.classList.add('dock');
+    summary.classList.remove('full');
+
+    if (window.Meter && window.Meter.showPaid) window.Meter.showPaid(result || {});
+
     const rows = [
         ['Fare', window.fmt.money(result.fare)],
         ['Tip', window.fmt.money(result.tip)],
@@ -137,6 +145,10 @@ window.showShiftSummary = (shift) => {
     if (shift.damageFee) rows.push(['Damage', `-${window.fmt.money(shift.damageFee)}`]);
     if (shift.abandoned) rows.push(['Abandoned a fare', 'yes']);
 
+    // You have parked and it is the end of something, so this one still
+    // gets the whole screen.
+    summary.classList.remove('dock');
+    summary.classList.add('full');
     document.querySelector('#summary h2').textContent = 'Shift over';
     document.getElementById('summary-rows').innerHTML = `
         ${rows.map(([label, value]) => `<div class="r"><span>${label}</span><span>${value}</span></div>`).join('')}

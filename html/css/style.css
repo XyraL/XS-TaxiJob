@@ -460,71 +460,239 @@ input:focus, select:focus {
 
 /* ── Meter ──────────────────────────────────────────────────────────────── */
 
-#meter {
+/* ── The meter ──────────────────────────────────────────────────────────── */
+
+/* One corner for everything that speaks while you drive. Never give this a
+   transform, filter or perspective: #summary.full is fixed inset:0 and a
+   containing block here would render the end-of-shift card in the corner. */
+#dock {
     position: fixed;
     right: 24px;
     bottom: 24px;
-    width: 250px;
-    background: rgba(16,18,23,.94);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    pointer-events: none;
+}
+#dock > * { pointer-events: auto; }
+
+/* A moulded box. Fixed size in every state — the inset top highlight is the
+   whole "this is a physical thing" trick, and there is deliberately no
+   backdrop-filter: over a transparent page CEF paints that region black. */
+#meter {
+    position: relative;
+    width: 300px;
+    background: var(--panel);
     border: 1px solid var(--line-2);
     border-radius: var(--radius);
-    padding: 14px 16px;
-    /* No backdrop-filter. Over a transparent page CEF has nothing to blur and
-       paints the filtered region black instead — a box far bigger than the
-       card, because the shadow goes opaque with it. */
-    box-shadow: 0 10px 26px rgba(0,0,0,.5);
+    overflow: hidden;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.06),
+        0 14px 34px rgba(0,0,0,.55);
     animation: fadeUp .26s var(--ease) both;
 }
 
-.meter-head {
+/* Band one: the sign. Carries the whole state in a colour and one word, so it
+   reads in peripheral vision without being looked at. */
+.mtr-head {
+    height: 28px;
+    padding: 0 12px;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 8px;
-}
-
-.dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--faint);
-    flex-shrink: 0;
-}
-
-#meter.running .dot { background: var(--amber); animation: pulse 1.5s ease-in-out infinite; }
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--amber-glow); }
-    50%      { opacity: .35; box-shadow: none; }
-}
-
-#meter-vehicle { margin-left: auto; color: var(--faint); font-size: 10.5px; }
-
-#meter-amount {
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--line);
     font-family: var(--display);
-    font-size: 34px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: -.02em;
-    color: var(--amber);
-    line-height: 1.05;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
 }
 
-.meter-grid {
+.mtr-state { white-space: nowrap; }
+.mtr-flags { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.mtr-flags .pill { font-size: 9px; padding: 1px 6px; letter-spacing: .08em; }
+#meter-vehicle { color: inherit; opacity: .7; font-size: 10px; letter-spacing: .06em; }
+
+.mtr-pips { display: flex; gap: 3px; }
+.pip {
+    width: 4px; height: 4px;
+    border-radius: 1px;
+    background: currentColor;
+    display: block;
+}
+.pip.spent { opacity: .25; }
+
+/* Band two: the well. Recessed below the body, which with the band above it is
+   what reads as glass over a display. */
+.mtr-read {
+    padding: 12px 14px 10px;
+    background: var(--bg);
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "big aux" "cap aux";
+    row-gap: 2px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.5);
+}
+
+/* Tabular figures are not a nicety here: $148 to $149 must not move a pixel
+   while the driver is reading it at speed. */
+.mtr-big {
+    grid-area: big;
+    font-family: var(--display);
+    font-size: 46px;
+    font-weight: 700;
+    line-height: .95;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    color: var(--amber);
+    text-shadow: 0 0 18px var(--amber-glow);
+}
+
+/* The big number means something different in every state, and an unlabelled
+   big number is a guess. */
+.mtr-cap {
+    grid-area: cap;
+    font-family: var(--display);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+}
+
+.mtr-aux {
+    grid-area: aux;
+    align-self: center;
+    justify-self: end;
+    text-align: right;
+    display: grid;
+    gap: 3px;
+}
+.mtr-aux b {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+}
+
+/* Band three: one line of context. Always drawn, even with no fare, so the
+   unit's height never changes. */
+.mtr-route {
+    height: 30px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
     gap: 8px;
-    margin: 11px 0 9px;
-    padding-top: 10px;
     border-top: 1px solid var(--line);
 }
+.mtr-to {
+    font-size: 11.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mtr-to strong { font-family: var(--display); font-size: 12px; color: var(--amber); font-weight: 600; }
+.mtr-to .mtr-cmd { font-family: var(--mono); color: var(--amber); font-size: 11px; }
+.mtr-eta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); white-space: nowrap; }
 
-.meter-grid span { display: block; font-family: var(--mono); font-size: 13px; }
-.meter-grid label { display: block; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-top: 2px; }
+/* ── States ─────────────────────────────────────────────────────────────── */
+/* A state light does not fade, so none of these carry a transition. */
 
-#meter-route { font-size: 11.5px; color: var(--muted); }
-#meter-route b { color: var(--amber); font-weight: 600; }
-#meter-totals { font-size: 10.5px; color: var(--faint); margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
+#meter.s-hire  .mtr-head { background: var(--amber-dim); color: var(--amber); }
+#meter.s-hire  .dot { background: var(--amber); box-shadow: 0 0 8px var(--amber-glow); }
+
+#meter.s-call  .mtr-head { background: var(--blue-dim); color: var(--blue); }
+#meter.s-call  .dot { background: var(--blue); animation: pulse 1.5s ease-in-out infinite; }
+#meter.s-call  .mtr-big { color: var(--blue); text-shadow: 0 0 18px rgba(90,167,255,.32); }
+
+#meter.s-board .mtr-head { background: var(--blue-dim); color: var(--blue); }
+#meter.s-board .dot { background: var(--blue); }
+
+/* The strongest idea in the design: a cab's roof lamp goes OUT when it is
+   hired and the meter lights up. The band inverting is that flip, in one
+   gesture, legible without reading a word. */
+#meter.s-hired .mtr-head { background: var(--amber); color: #15120a; }
+#meter.s-hired .dot { background: #15120a; box-shadow: none; }
+#meter.s-hired .mtr-flags .pill { background: rgba(0,0,0,.22); color: #15120a; border-color: rgba(0,0,0,.25); }
+
+#meter.s-paid  .mtr-head { background: var(--ok-dim); color: var(--ok); }
+#meter.s-paid  .dot { background: var(--ok); }
+#meter.s-paid  .mtr-big { color: var(--ok); text-shadow: 0 0 18px rgba(61,220,151,.3); }
+
+/* The pickup running out. The colour is the alarm; there is no beep. */
+#meter.s-alarm .mtr-head { background: var(--bad-dim); color: var(--bad); }
+#meter.s-alarm .dot { background: var(--bad); animation: pulse 1s ease-in-out infinite; }
+#meter.s-alarm .mtr-big { color: var(--bad); text-shadow: 0 0 18px rgba(229,87,77,.34); }
+
+/* Anything still reaching for the old class finds the hired look. */
+#meter.running .mtr-head { background: var(--amber); color: #15120a; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .35; }
+}
+
+/* ── One-shots ──────────────────────────────────────────────────────────── */
+
+/* The number rolls over when its meaning changes. */
+#meter.flip .mtr-big { animation: mtrFlip .14s var(--ease) both; }
+@keyframes mtrFlip {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* A star lost. The cab takes a hit and the meter jolts — today the cost of
+   driving badly is invisible until the summary card. */
+#meter.knock .mtr-head { animation: mtrKnock .5s var(--ease) both; }
+#meter.knock .dot { animation: mtrKnockDot .5s var(--ease) both; }
+@keyframes mtrKnock {
+    0%   { background: rgba(229,87,77,.4); }
+    100% { }
+}
+@keyframes mtrKnockDot {
+    0%, 100% { transform: scale(1); }
+    40%      { transform: scale(1.9); }
+}
+
+/* Paid. One wash across the glass. */
+#meter.settle .mtr-read { animation: mtrSettle .08s linear both; }
+@keyframes mtrSettle {
+    from { background: #2a2e36; }
+    to   { background: var(--bg); }
+}
+
+/* ── The receipt ────────────────────────────────────────────────────────── */
+/* A fare completing docks above the meter instead of throwing a card over the
+   middle of the screen while you are driving. Ending a shift still gets the
+   screen — you have parked, and it is the end of something. */
+#summary.dock {
+    position: static;
+    inset: auto;
+    display: block;
+    background: none;
+    backdrop-filter: none;
+    place-items: initial;
+}
+#summary.dock .summary-card {
+    width: 300px;
+    padding: 14px 16px;
+    animation: slideIn .26s var(--ease) both;
+}
+#summary.dock .summary-card h2 { font-size: 13px; margin-bottom: 10px; }
+#summary.dock .summary-rows { margin-bottom: 10px; gap: 6px; }
+#summary.dock .summary-rows div { font-size: 11.5px; padding-bottom: 6px; }
+#summary.dock #summary-close {
+    width: auto;
+    padding: 5px 12px;
+    font-size: 11px;
+    margin-left: auto;
+    display: block;
+}
 
 /* ── Hail offers ────────────────────────────────────────────────────────── */
 
@@ -694,5 +862,4 @@ input:focus, select:focus {
 /* Not opacity: both elements animate in with fill-mode both, and an
    animation's fill beats a plain declaration in the cascade. visibility is
    outside the animation, so it actually takes. */
-body.terminal-open #meter,
-body.terminal-open #hails { visibility: hidden; pointer-events: none; }
+body.terminal-open #dock { visibility: hidden; pointer-events: none; }

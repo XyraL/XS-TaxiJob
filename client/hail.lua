@@ -67,6 +67,7 @@ RegisterCommand('accepthail', function(_, args)
     AcceptHail(id)
 end, false)
 
-RegisterNUICallback('acceptHail', function(data, cb)
-    cb(AcceptHail(data and data.id))
-end)
+-- No NUI callback for this. A call card is shown while the driver is driving,
+-- when the page has no focus and nothing on it can be clicked — and while the
+-- terminal IS open the dock it lives in is hidden. /accepthail is the way in,
+-- which is why the card prints it.

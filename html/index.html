@@ -35,30 +35,48 @@
     </div>
 </div>
 
-<div id="meter" class="hidden">
-    <div class="meter-head">
-        <span class="dot"></span>
-        <span id="meter-title">Off duty</span>
-        <span id="meter-vehicle"></span>
-    </div>
-    <div id="meter-amount">$0</div>
-    <div class="meter-grid">
-        <div><span id="meter-distance">0m</span><label>Distance</label></div>
-        <div><span id="meter-time">0:00</span><label>Time</label></div>
-        <div><span id="meter-rating">5.0</span><label>Rating</label></div>
-    </div>
-    <div id="meter-route"></div>
-    <div id="meter-totals"></div>
-</div>
+<!-- One corner, one order: calls, then the receipt, then the meter. -->
+<div id="dock">
 
-<div id="hails"></div>
+    <div id="hails"></div>
 
-<div id="summary" class="hidden">
-    <div class="summary-card">
-        <h2>Fare complete</h2>
-        <div class="summary-rows" id="summary-rows"></div>
-        <button id="summary-close" type="button">Nice</button>
+    <div id="summary" class="hidden">
+        <div class="summary-card">
+            <h2>Fare complete</h2>
+            <div class="summary-rows" id="summary-rows"></div>
+            <button id="summary-close" type="button">Clear</button>
+        </div>
     </div>
+
+    <!-- A fixed-size unit. It never resizes between states: a box in the
+         corner of your eye that grows and shrinks while you drive is what
+         makes a HUD read as a web page rather than as equipment. -->
+    <div id="meter" class="hidden">
+        <div class="mtr-head">
+            <span class="dot"></span>
+            <span class="mtr-state" id="meter-title">Off duty</span>
+            <span class="mtr-flags">
+                <span class="pill" id="meter-tariff" hidden></span>
+                <span class="mtr-pips" id="meter-pips"></span>
+                <span id="meter-vehicle"></span>
+            </span>
+        </div>
+
+        <div class="mtr-read" id="meter-well">
+            <div class="mtr-big" id="meter-amount">$0</div>
+            <div class="mtr-cap" id="meter-cap">Shift</div>
+            <div class="mtr-aux">
+                <b id="meter-distance">0m</b>
+                <b id="meter-time">0:00</b>
+            </div>
+        </div>
+
+        <div class="mtr-route">
+            <span class="mtr-to" id="meter-route"></span>
+            <span class="mtr-eta" id="meter-totals"></span>
+        </div>
+    </div>
+
 </div>
 
 <script src="js/app.js"></script>
