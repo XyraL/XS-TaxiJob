@@ -77,6 +77,7 @@ RegisterNUICallback('startShift', function(data, cb)
 
     Taxi.onDuty = true
     Uniform.Apply()
+    SetLamp(Config.Flagdown.lampOnAtSignOn)
     Taxi.vehicle = result.vehicle
     Taxi.stats = result.stats
     Taxi.totals = { fares = 0, earned = 0, distance = 0 }
@@ -117,6 +118,7 @@ function EndShift()
     if returned then DespawnCab() end
 
     Taxi.onDuty = false
+    Taxi.lamp = false
     Taxi.vehicle = nil
     Uniform.Remove()
     Taxi.stats = result.summary.stats
@@ -156,6 +158,19 @@ RegisterCommand(Config.Depot.command, function()
 
     OpenTerminal()
 end, false)
+
+RegisterCommand(Config.Flagdown.command, function()
+    if not Taxi.onDuty then
+        Framework.Notify('You are not signed on.', 'error')
+        return
+    end
+
+    SetLamp(not Taxi.lamp)
+end, false)
+
+if Config.Flagdown.key ~= '' then
+    RegisterKeyMapping(Config.Flagdown.command, 'Toggle the roof lamp', 'keyboard', Config.Flagdown.key)
+end
 
 if Config.Depot.key ~= '' then
     RegisterKeyMapping(Config.Depot.command, 'Open the cab terminal', 'keyboard', Config.Depot.key)

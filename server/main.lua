@@ -127,6 +127,9 @@ lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
         startedAt = os.time(),
         totals = { fares = 0, earned = 0, distance = 0 },
         fare = nil,
+        -- Set here as well as by the client's own call, so a driver is never
+        -- briefly lamp-unknown between signing on and the event landing.
+        lamp = Config.Flagdown.lampOnAtSignOn,
         vehicle = {
             model = entry.model,
             label = entry.label,
@@ -143,6 +146,13 @@ lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
         deposit = Config.Vehicles.deposit,
         stats = summary,
     }
+end)
+
+-- The lamp lives on the driver so the server can skip lamp-off drivers when
+-- it hands work out, whichever way the work arrived.
+RegisterNetEvent('XS-TaxiJob:server:setLamp', function(on)
+    local driver = Drivers[source]
+    if driver then driver.lamp = on == true end
 end)
 
 RegisterNetEvent('XS-TaxiJob:server:registerCab', function(netId)

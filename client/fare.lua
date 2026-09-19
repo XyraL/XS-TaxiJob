@@ -115,9 +115,22 @@ local function boardPassenger(fare)
         -- TaskEnterVehicle walks them over, so boarding starting further out
         -- is what makes them come to the cab rather than the cab having to
         -- land on the marker.
+        -- Seat 2 was hardcoded. Sending a ped to a seat somebody is already
+        -- in makes them drag the occupant out of it, so a driver carrying a
+        -- friend got their friend thrown into the road by the next fare.
+        local seat = (IsVehicleSeatFree(Taxi.cab, 2) and 2)
+            or (IsVehicleSeatFree(Taxi.cab, 1) and 1)
+            or (IsVehicleSeatFree(Taxi.cab, 0) and 0)
+
+        if not seat then
+            Framework.Notify('No room in the cab.', 'error')
+            CancelFare('failed')
+            return false
+        end
+
         ClearPedTasks(fare.passengerPed)
         SetPedKeepTask(fare.passengerPed, true)
-        TaskEnterVehicle(fare.passengerPed, Taxi.cab, Config.Fares.boardingTimeout * 1000, 2, 1.6, 1, 0)
+        TaskEnterVehicle(fare.passengerPed, Taxi.cab, Config.Fares.boardingTimeout * 1000, seat, 1.6, 1, 0)
     end
 
     local deadline = GetGameTimer() + (Config.Fares.boardingTimeout * 1000)
@@ -191,18 +204,50 @@ local function dropOff(fare)
     return result
 end
 
+-- Carrying somebody to where they are going. Shared, because a fare that was
+-- dispatched and a fare that flagged the cab down are the same job once the
+-- passenger is in the back.
+function runDropoff(fare)
+    while true do
+        Wait(500)
+
+        if not Taxi.fare or Taxi.fare.id ~= fare.id then return end
+        if not Taxi.onDuty then
+            CancelFare('abandoned')
+            return
+        end
+
+        local passengerAboard = fare.passengerPed and DoesEntityExist(fare.passengerPed)
+            and IsPedInVehicle(fare.passengerPed, Taxi.cab, false)
+
+        if not passengerAboard and fare.stage == 'riding' then
+            Framework.Notify('Your passenger got out early. No fare.', 'error')
+            CancelFare('abandoned')
+            return
+        end
+
+        local here = GetEntityCoords(PlayerPedId())
+        local away = #(here - vec3(fare.dropoff.x, fare.dropoff.y, fare.dropoff.z))
+        local stopped = not CabExists() or GetEntitySpeed(Taxi.cab) < 3.0
+
+        if away <= Config.Fares.dropoffDistance and stopped then
+            dropOff(fare)
+            return
+        end
+    end
+end
+
 -- Drives a fare from offer through to payout. Runs in its own thread so the
 -- NUI callback that started it can return straight away.
 local function runFare(fare)
     Taxi.fare = fare
     fare.stage = 'toPickup'
 
-    -- A random spot is a bearing and a distance until this puts it on a road
-    -- and names it. Named points are already somewhere real.
-    if fare.random then
-        onStreet(fare.pickup)
-        if fare.dropoff then onStreet(fare.dropoff) end
-    end
+    -- A fabricated spot is a bearing and a distance until this puts it on a
+    -- road and names it. A named point, or a kerb somebody is stood on, is
+    -- already somewhere real.
+    if fare.snapPickup then onStreet(fare.pickup) end
+    if fare.snapDropoff and fare.dropoff then onStreet(fare.dropoff) end
 
     setBlip(fare.pickup, ('Pickup - %s'):format(fare.pickup.label), 280, 5)
     Framework.Notify(('Pickup at %s.'):format(fare.pickup.label), 'inform')
@@ -268,33 +313,7 @@ local function runFare(fare)
     setBlip(fare.dropoff, ('Drop off - %s'):format(fare.dropoff.label), 280, 2)
     Framework.Notify(('Take them to %s.'):format(fare.dropoff.label), 'success')
 
-    while true do
-        Wait(500)
-
-        if not Taxi.fare or Taxi.fare.id ~= fare.id then return end
-        if not Taxi.onDuty then
-            CancelFare('abandoned')
-            return
-        end
-
-        local passengerAboard = fare.passengerPed and DoesEntityExist(fare.passengerPed)
-            and IsPedInVehicle(fare.passengerPed, Taxi.cab, false)
-
-        if not passengerAboard and fare.stage == 'riding' then
-            Framework.Notify('Your passenger got out early. No fare.', 'error')
-            CancelFare('abandoned')
-            return
-        end
-
-        local here = GetEntityCoords(PlayerPedId())
-        local away = #(here - vec3(fare.dropoff.x, fare.dropoff.y, fare.dropoff.z))
-        local stopped = not CabExists() or GetEntitySpeed(Taxi.cab) < 3.0
-
-        if away <= Config.Fares.dropoffDistance and stopped then
-            dropOff(fare)
-            return
-        end
-    end
+    runDropoff(fare)
 end
 
 RegisterNetEvent('XS-TaxiJob:client:fareCancelled', function()
@@ -366,6 +385,29 @@ RegisterNUICallback('endRide', function(_, cb)
     end
     cb(dropOff(Taxi.fare))
 end)
+
+-- Somebody who flagged the cab down. Already stood there, already the
+-- passenger, so it goes straight to boarding rather than driving to a marker.
+function StartFlaggedFare(fare)
+    CreateThread(function()
+        Taxi.fare = fare
+        fare.stage = 'toPickup'
+
+        if fare.snapDropoff and fare.dropoff then onStreet(fare.dropoff) end
+
+        if not boardPassenger(fare) then return end
+        if not Taxi.fare or Taxi.fare.id ~= fare.id then return end
+
+        fare.stage = 'riding'
+        StartMeter()
+        TriggerServerEvent('XS-TaxiJob:server:fareBoarded', fare.id)
+
+        setBlip(fare.dropoff, ('Drop off - %s'):format(fare.dropoff.label), 280, 2)
+        Framework.Notify(('They are going to %s.'):format(fare.dropoff.label), 'success')
+
+        runDropoff(fare)
+    end)
+end
 
 function StartHailedFare(fare)
     CreateThread(function() runFare(fare) end)

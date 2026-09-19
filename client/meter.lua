@@ -24,6 +24,9 @@ function ResetMeter()
     Meter.startedAt = 0
     Meter.rating = 5.0
     Meter.penalties = {}
+    -- Cleared with everything else, or the next passenger is measured against
+    -- the last one's health and the penalty never fires again.
+    Meter.passengerHealth = nil
     lastCoords = nil
     lastBodyHealth = nil
     speedingSince = nil
@@ -99,9 +102,20 @@ local function trackQuality(speed)
         end
     end
 
+    --[[ Measured against the state they got in, not against a number.
+
+         A spawned passenger is always on 200, so a flat threshold of 150 has
+         always worked for them. It stops working the moment the passenger is
+         somebody who was already walking around: the world leaves ambient
+         pedestrians on whatever health they happen to have, and one who got in
+         on 120 would cost the driver the heaviest penalty in the list before
+         the cab had moved. ]]
     if Taxi.fare and Taxi.fare.passengerPed and DoesEntityExist(Taxi.fare.passengerPed) then
         local health = GetEntityHealth(Taxi.fare.passengerPed)
-        if health < 150 and not Meter.penalties.passengerHurt then
+
+        Meter.passengerHealth = Meter.passengerHealth or health
+
+        if health < (Meter.passengerHealth - 40) and not Meter.penalties.passengerHurt then
             penalise('passengerHurt', Config.Quality.penalties.passengerHurt)
         end
     end

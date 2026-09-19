@@ -37,6 +37,7 @@ client_scripts {
     'client/meter.lua',
     'client/fare.lua',
     'client/hail.lua',
+    'client/flagdown.lua',
 }
 
 server_scripts {

@@ -135,6 +135,20 @@ function BuildFare(driver, kind, override)
     if override and override.pickup then
         pickup = override.pickup
         dropoff = override.dropoff
+
+        -- Somebody flagging the cab down knows where they are standing and
+        -- nothing else. The same generator that makes a street run picks
+        -- where they are going.
+        if not dropoff then
+            local from = pointVec(pickup)
+
+            if Config.Fares.randomStreets then
+                local away = randomAnchor(from, Config.Fares.minTripDistance, Config.Fares.maxTripDistance)
+                dropoff = { coords = vec4(away.x, away.y, away.z, 0.0), label = 'the drop-off', area = 'street' }
+            else
+                dropoff = pickDropoff(points, pickup)
+            end
+        end
     elseif Config.Fares.randomStreets then
         pickup, dropoff = randomRun(near)
     else
@@ -158,9 +172,12 @@ function BuildFare(driver, kind, override)
             label = dropoff.label, area = dropoff.area,
         },
         crossTown = pickup.area ~= dropoff.area,
-        -- The client snaps these to the road network and renames them after
-        -- the street. Named points are already where somebody put them.
-        random = pickup.area == 'street' or nil,
+        -- Snapped to the road network and renamed after the street, per end.
+        -- One flag is not enough: a flag-down's pickup is the kerb a real
+        -- person is standing on, and moving it to the nearest node puts the
+        -- marker somewhere they are not.
+        snapPickup = (pickup.area == 'street' and not (override and override.pickup)) or nil,
+        snapDropoff = dropoff.area == 'street' or nil,
         night = isNight(),
         straightLine = #(pointVec(dropoff) - pointVec(pickup)),
         ped = Config.Fares.peds[math.random(#Config.Fares.peds)],
@@ -169,6 +186,93 @@ function BuildFare(driver, kind, override)
         passengerCitizenId = override and override.passengerCitizenId or nil,
     }
 end
+
+--[[ Who has already been flagged down.
+
+     Two cabs can drive past the same person, and an ambient pedestrian is a
+     different entity handle on every machine — so the claim is on the PLACE,
+     rounded to a cell, which every client agrees about.
+
+     Cells are dropped as they age rather than swept, because the table only
+     grows while people are being picked up. ]]
+local claims = {}
+
+local function cellOf(x, y)
+    return ('%d:%d'):format(math.floor(x / 10), math.floor(y / 10))
+end
+
+local function claimCell(x, y)
+    local key = cellOf(x, y)
+    local now = os.time()
+
+    if claims[key] and now - claims[key] < 60 then return false end
+
+    claims[key] = now
+
+    -- Cheap enough to do inline, and only ever while somebody is being picked
+    -- up rather than on a timer nothing needs.
+    for cell, at in pairs(claims) do
+        if now - at > 120 then claims[cell] = nil end
+    end
+
+    return true
+end
+
+lib.callback.register('XS-TaxiJob:server:claimFlagdown', function(src, data)
+    if not Config.Flagdown.enabled then return { ok = false } end
+    if Admin and Admin.settings.paused then return { ok = false } end
+
+    local driver = DriverOf(src)
+    if not driver or not driver.onDuty or driver.fare then return { ok = false } end
+    if driver.lamp == false then return { ok = false } end
+
+    if type(data) ~= 'table' then return { ok = false } end
+
+    return { ok = claimCell(tonumber(data.x) or 0.0, tonumber(data.y) or 0.0) }
+end)
+
+--[[ The fare that comes out of it.
+
+     The client says where the person is standing. That is all it says: the
+     destination, the distance it is measured against and the money are worked
+     out here, the same as every other fare. ]]
+lib.callback.register('XS-TaxiJob:server:flagdownFare', function(src, data)
+    if not Config.Flagdown.enabled then return { ok = false, error = 'Nobody is out there.' } end
+
+    local driver = DriverOf(src)
+    if not driver or not driver.onDuty then return { ok = false, error = 'You are not signed on.' } end
+    if driver.fare then return { ok = false, error = 'You already have a fare.' } end
+
+    if type(data) ~= 'table' then return { ok = false, error = 'They changed their mind.' } end
+
+    -- Where they are standing, checked against where the cab is. A client
+    -- asking to be picked up on the other side of the map is not one.
+    local ped = GetPlayerPed(src)
+    local here = ped and ped ~= 0 and GetEntityCoords(ped) or nil
+    local at = vec3(tonumber(data.x) or 0.0, tonumber(data.y) or 0.0, tonumber(data.z) or 0.0)
+
+    if not here or #(here - at) > 60.0 then
+        return { ok = false, error = 'They changed their mind.' }
+    end
+
+    local fare = BuildFare(driver, 'npc', {
+        pickup = {
+            coords = vec4(at.x, at.y, at.z, tonumber(data.h) or 0.0),
+            label = 'the kerb',
+            area = 'street',
+        },
+    })
+
+    if not fare then return { ok = false, error = 'They changed their mind.' } end
+
+    -- A fabricated pickup has no real area, so comparing it with the drop-off
+    -- says nothing. The same reason server/hail.lua clears it.
+    fare.crossTown = false
+
+    driver.fare = fare
+
+    return { ok = true, fare = fare }
+end)
 
 lib.callback.register('XS-TaxiJob:server:requestFare', function(src, data)
     if Admin and Admin.settings.paused then

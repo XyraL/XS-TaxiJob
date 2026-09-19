@@ -244,6 +244,45 @@ Config.Fares.dropoffDistance = 15.0
 Config.Fares.boardingTimeout = 60      -- seconds a ped waits at the kerb before giving up
 Config.Fares.cooldownBetween = 8       -- seconds after a drop-off before the next offer
 
+-- ─────────────────────────────────────────────────────────────
+-- Getting flagged down
+-- With the roof lamp on, people on the pavement put a hand out as the cab goes
+-- past. Pulling over takes them; driving on does not. The lamp is the off
+-- switch for the whole thing, so a driver heading back to the depot at the end
+-- of a shift can stop being stopped.
+--
+-- Only the taxi model has a sign on its roof. On the other cabs the lamp is a
+-- state the job keeps rather than a bulb you can see.
+-- ─────────────────────────────────────────────────────────────
+Config.Flagdown = {}
+
+Config.Flagdown.enabled = true
+
+-- Toggles the lamp. Bind a key to it under Settings, Key Bindings, FiveM, or
+-- put one in `key` to ship a default — empty so it cannot fight another
+-- resource for a binding.
+Config.Flagdown.command = 'lamp'
+Config.Flagdown.key = ''
+
+-- Lamp on the moment you sign on. Off means you start quiet and turn it on.
+Config.Flagdown.lampOnAtSignOn = true
+
+-- How far from the cab somebody can be and still flag it down.
+Config.Flagdown.range = 45.0
+
+-- How close you have to stop to pick them up.
+Config.Flagdown.stopDistance = 12.0
+
+-- Seconds they will stand there with a hand out before giving up on you.
+Config.Flagdown.offerSeconds = 25
+
+-- Seconds after one flag-down before another can happen. Without this a busy
+-- pavement is a wall of people waving.
+Config.Flagdown.cooldown = 45
+
+-- Percent chance per check (twice a second while driving with the lamp on).
+Config.Flagdown.chance = 4
+
 -- Peds used as passengers. Picked at random.
 Config.Fares.peds = {
     'a_m_y_business_01', 'a_f_y_business_02', 'a_m_m_business_01',
