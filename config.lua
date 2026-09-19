@@ -55,6 +55,11 @@ Config.Depot.dispatcher = {
     scenario = 'WORLD_HUMAN_CLIPBOARD',
     label    = 'Talk to the dispatcher',
     distance = 2.0,
+
+    -- How close you have to get before the dispatcher is spawned. The ground
+    -- is only probed once the map around the depot has loaded, so spawning
+    -- from across the city would put them at the configured z instead.
+    spawnRange = 120.0,
 }
 
 -- Opens the terminal from wherever you are. At the depot anybody can use it;
