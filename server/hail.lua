@@ -68,6 +68,13 @@ end
 
 RegisterCommand(Config.Hail.command, function(src)
     if src == 0 then return end
+    if Admin and not Admin.settings.hailEnabled then
+        -- A command handler's return value goes nowhere. Returning an error
+        -- table here made /taxi look broken rather than switched off.
+        Framework.Notify(src, 'Taxi dispatch is not taking calls right now.', 'error')
+        return
+    end
+
     if not Config.Hail.enabled then
         Framework.Notify(src, 'Calling a cab is disabled here.', 'error')
         return

@@ -57,7 +57,7 @@ if IsDuplicityVersion() then
         local player = Framework.GetPlayer(src)
         local info = player and player.PlayerData and player.PlayerData.charinfo
         if not info then return GetPlayerName(src) or 'Unknown' end
-        return ('%s %s'):format(info.firstname or '', info.lastname or ''):gsub('^%s+', ''):gsub('%s+$', '')
+        return (('%s %s'):format(info.firstname or '', info.lastname or ''):gsub('^%s+', ''):gsub('%s+$', ''))
     end
 
     function Framework.GetNameByCitizenId(citizenid)
@@ -65,7 +65,7 @@ if IsDuplicityVersion() then
         if not row or not row.charinfo then return citizenid end
         local ok, info = pcall(json.decode, row.charinfo)
         if not ok or not info then return citizenid end
-        return ('%s %s'):format(info.firstname or '', info.lastname or ''):gsub('^%s+', ''):gsub('%s+$', '')
+        return (('%s %s'):format(info.firstname or '', info.lastname or ''):gsub('^%s+', ''):gsub('%s+$', ''))
     end
 
     function Framework.AddMoney(src, account, amount, reason)

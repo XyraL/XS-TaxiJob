@@ -73,13 +73,18 @@ local function settle(driver, fare, reported)
         + (waiting / 60.0) * Config.Meter.perWaitingMinute
 
     if fare.crossTown then amount = amount * Config.Fares.crossTownBonus end
-    if isNight() then amount = amount * Config.Meter.nightBonus.multiplier end
+
+    -- Decided once, when the fare was built, and sent to the dash with it.
+    -- Asking again here would also disagree with the meter on any ride that
+    -- happens to cross the boundary.
+    if fare.night then amount = amount * Config.Meter.nightBonus.multiplier end
     if fare.kind == 'player' then amount = amount * Config.Hail.playerFareMultiplier end
 
     amount = amount * (driver.vehicle.rate or 1.0)
 
     local summary = Stats.Summary(driver.citizenid)
     amount = amount * (summary and summary.fareMultiplier or 1.0)
+    amount = amount * ((Admin and Admin.settings.fareMultiplier) or 1.0)
 
     local total = math.max(Config.Meter.minimumFare, math.floor(amount + 0.5))
     local tipRate = Config.Quality.tips[math.max(1, math.min(5, math.floor(rating + 0.5)))] or 0
@@ -114,6 +119,7 @@ function BuildFare(driver, kind, override)
             label = dropoff.label, area = dropoff.area,
         },
         crossTown = pickup.area ~= dropoff.area,
+        night = isNight(),
         straightLine = #(pointVec(dropoff) - pointVec(pickup)),
         ped = Config.Fares.peds[math.random(#Config.Fares.peds)],
         offeredAt = os.time(),
@@ -123,6 +129,10 @@ function BuildFare(driver, kind, override)
 end
 
 lib.callback.register('XS-TaxiJob:server:requestFare', function(src, data)
+    if Admin and Admin.settings.paused then
+        return { ok = false, error = 'Dispatch is paused. Nothing is being handed out.' }
+    end
+
     local driver = DriverOf(src)
     if not driver or not driver.onDuty then return { ok = false, error = 'You are not signed on.' } end
     if driver.fare then return { ok = false, error = 'You already have a fare.' } end

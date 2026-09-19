@@ -155,7 +155,7 @@ local function runFare(fare)
     setBlip(fare.pickup, ('Pickup - %s'):format(fare.pickup.label), 280, 5)
     Framework.Notify(('Pickup at %s.'):format(fare.pickup.label), 'inform')
 
-    local deadline = GetGameTimer() + (Config.Fares.offerTimeout * 6 * 1000)
+    local deadline = GetGameTimer() + (Config.Fares.pickupTimeout * 1000)
 
     while true do
         Wait(500)
@@ -190,7 +190,7 @@ local function runFare(fare)
 
     if fare.openEnded then
         clearBlip()
-        Framework.Notify('Meter running. End the ride where they ask to be dropped.', 'success')
+        Framework.Notify('Meter running. End the ride from the terminal, or with /endride, where they ask to be dropped.', 'success')
         return
     end
 
@@ -225,6 +225,14 @@ local function runFare(fare)
         end
     end
 end
+
+RegisterNetEvent('XS-TaxiJob:client:fareCancelled', function()
+    if not Taxi.fare then return end
+
+    ClearFareState()
+    StopMeter()
+    Framework.Notify('Your fare was cleared.', 'inform')
+end)
 
 function RequestFare()
     if not Taxi.onDuty then return { ok = false, error = 'You are not signed on.' } end

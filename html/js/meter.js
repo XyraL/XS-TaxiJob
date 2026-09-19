@@ -23,8 +23,10 @@ window.Meter = (() => {
         }
 
         root.classList.remove('hidden');
-        root.classList.toggle('live', Boolean(data.running));
-        root.classList.toggle('idle', !data.running);
+        // The stylesheet has #meter.running .dot; 'live' and 'idle' are
+        // styled by nothing, so the dot never lit and the meter read as dead
+        // while it was ticking.
+        root.classList.toggle('running', Boolean(data.running));
 
         title.textContent = data.hasFare
             ? (STAGE_TEXT[data.stage] || 'On a fare')
@@ -61,9 +63,9 @@ window.Meter = (() => {
         node.className = 'hail';
         node.id = `hail-${offer.id}`;
         node.innerHTML = `
-            <div class="who">${window.fmt.escape(offer.passenger || 'Someone')}</div>
-            <div class="meta">${window.fmt.distance(offer.distance || 0)} away &middot; ${window.fmt.escape(offer.label || 'Street pickup')}</div>
-            <div class="hint">/accepthail ${offer.id}</div>`;
+            <b>${window.fmt.escape(offer.passenger || 'Someone')}</b>
+            <p>${window.fmt.distance(offer.distance || 0)} away &middot; ${window.fmt.escape(offer.label || 'Street pickup')}</p>
+            <span class="cmd">/accepthail ${offer.id}</span>`;
 
         node.addEventListener('click', async () => {
             const result = await window.post('acceptHail', { id: offer.id });

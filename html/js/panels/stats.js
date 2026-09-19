@@ -15,7 +15,7 @@ window.Panels.stats = {
                 <h3>Recent fares</h3>
                 <div class="sub">Your last ${recent.length} trips.</div>
                 ${recent.length ? `
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr><th>Route</th><th>Distance</th><th>Rating</th><th style="text-align:right">Paid</th></tr>
                         </thead>

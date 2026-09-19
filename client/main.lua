@@ -54,10 +54,6 @@ RegisterNUICallback('getState', function(_, cb)
     cb(lib.callback.await('XS-TaxiJob:server:getState', false))
 end)
 
-RegisterNUICallback('leaderboard', function(_, cb)
-    cb(lib.callback.await('XS-TaxiJob:server:leaderboard', false))
-end)
-
 RegisterNUICallback('startShift', function(data, cb)
     if Taxi.onDuty then
         cb({ ok = false, error = 'You are already signed on.' })
@@ -80,6 +76,7 @@ RegisterNUICallback('startShift', function(data, cb)
     end
 
     Taxi.onDuty = true
+    Uniform.Apply()
     Taxi.vehicle = result.vehicle
     Taxi.stats = result.stats
     Taxi.totals = { fares = 0, earned = 0, distance = 0 }
@@ -121,6 +118,7 @@ function EndShift()
 
     Taxi.onDuty = false
     Taxi.vehicle = nil
+    Uniform.Remove()
     Taxi.stats = result.summary.stats
     ClearFareState()
     StopMeterLoop()
@@ -134,8 +132,17 @@ end
 
 RegisterNetEvent('XS-TaxiJob:client:forceEndShift', function()
     if not Taxi.onDuty then return end
-    EndShift()
-    Framework.Notify('An admin ended your shift.', 'inform')
+
+    -- Told them it ended whether it did or not. If the call failed the meter
+    -- kept running and the terminal still said on duty, with the two ends
+    -- disagreeing about whether there was a shift at all.
+    local result = EndShift()
+
+    if result and result.ok then
+        Framework.Notify('An admin ended your shift.', 'inform')
+    else
+        Framework.Notify('An admin tried to end your shift and it would not close.', 'error')
+    end
 end)
 
 CreateThread(function()

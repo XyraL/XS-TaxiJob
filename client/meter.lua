@@ -57,17 +57,12 @@ function MeterAmount()
 
     if Taxi.fare and Taxi.fare.crossTown then amount = amount * Config.Fares.crossTownBonus end
 
-    local night = Config.Meter.nightBonus
-    local hour = GetClockHours()
-    local isNight
-
-    if night.from <= night.to then
-        isNight = hour >= night.from and hour < night.to
-    else
-        isNight = hour >= night.from or hour < night.to
+    -- The server decides this when it builds the fare and sends it down.
+    -- Working it out here off the in-game clock, while the server read the
+    -- host machine's, is why the dash and the payout disagreed.
+    if Taxi.fare and Taxi.fare.night then
+        amount = amount * Config.Meter.nightBonus.multiplier
     end
-
-    if isNight then amount = amount * night.multiplier end
 
     amount = amount * ((Taxi.vehicle and Taxi.vehicle.rate) or 1.0)
     amount = amount * ((Taxi.stats and Taxi.stats.fareMultiplier) or 1.0)

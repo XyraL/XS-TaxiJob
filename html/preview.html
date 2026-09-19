@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <title>XS-TaxiJob - preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <style>
     body { background: #0e1014 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 40L40 0' stroke='%23191c22' stroke-width='1'/%3E%3C/svg%3E"); }
@@ -28,6 +31,7 @@
             <button class="tab" data-tab="vehicles">Cabs</button>
             <button class="tab" data-tab="stats">Record</button>
             <button class="tab" data-tab="leaderboard">Board</button>
+            <button class="tab admin-tab hidden" data-tab="admin">Admin</button>
         </nav>
 
         <main id="panel"></main>
@@ -97,10 +101,35 @@
         ],
     };
 
+    MOCK.isAdmin = true;
+
+    const ADMIN = {
+        ok: true,
+        drivers: [
+            { src: 1, citizenid: 'VAL88213', name: 'Vincent Valentine', onDuty: true,
+              vehicle: 'Primo Custom', plate: 'XSTX 041', since: 5400, earned: 683, fares: 4,
+              distance: 11420, reputation: 168, tier: 'Veteran', rating: 4.42,
+              fare: { id: 7, kind: 'npc', pickup: 'Legion Square', dropoff: 'Vinewood Hills', boarded: true } },
+            { src: 4, citizenid: 'FER21904', name: 'Isabel Ferreira', onDuty: true,
+              vehicle: 'Taxi', plate: 'XSTX 118', since: 1980, earned: 214, fares: 2,
+              distance: 4120, reputation: 96, tier: 'Driver', rating: 4.8,
+              fare: { id: 9, kind: 'player', pickup: 'Pillbox Hospital', dropoff: null, boarded: false } },
+            { src: 9, citizenid: 'OBI55120', name: 'Terrence Obi', onDuty: true,
+              vehicle: 'Cabby', plate: 'XSTX 226', since: 640, earned: 0, fares: 0,
+              distance: 0, reputation: 24, tier: 'Trainee', rating: 5.0, fare: null },
+        ],
+        totals: {
+            onDuty: 3, earnedThisShift: 897, faresThisShift: 6,
+            allTime: { fares: 2841, earned: 418260 },
+        },
+        settings: { hailEnabled: true, fareMultiplier: 1.0, paused: false },
+    };
+
     window.fetch = (url, options) => {
         const name = String(url).split('/').pop();
         console.log('[preview] callback:', name, options && options.body);
         if (name === 'getState') return Promise.resolve(new Response(JSON.stringify(MOCK), { status: 200 }));
+        if (name === 'adminState') return Promise.resolve(new Response(JSON.stringify(ADMIN), { status: 200 }));
         return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     };
 </script>
@@ -111,6 +140,7 @@
 <script src="js/panels/vehicles.js"></script>
 <script src="js/panels/stats.js"></script>
 <script src="js/panels/leaderboard.js"></script>
+<script src="js/panels/admin.js"></script>
 
 <script>
     window.dispatchEvent(new MessageEvent('message', { data: { action: 'open', state: MOCK } }));

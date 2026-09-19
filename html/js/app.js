@@ -55,6 +55,10 @@ function renderPanel() {
 function setState(next) {
     if (!next) return;
     state = next;
+    window.__state = state;
+
+    const adminTab = document.querySelector('.tab.admin-tab');
+    if (adminTab) adminTab.classList.toggle('hidden', state.isAdmin !== true);
 
     const stats = state.stats || {};
     driverLine.textContent = state.onDuty
@@ -72,12 +76,14 @@ window.refresh = async () => {
 };
 
 window.openTerminal = (next) => {
+    document.body.classList.add('terminal-open');
     setState(next);
     terminal.classList.remove('hidden');
 };
 
 function closeTerminal() {
     terminal.classList.add('hidden');
+    document.body.classList.remove('terminal-open');
     window.post('close');
 }
 
@@ -101,6 +107,10 @@ const summary = document.getElementById('summary');
 document.getElementById('summary-close').addEventListener('click', () => summary.classList.add('hidden'));
 
 function showSummary(result) {
+    // Set on both paths. showShiftSummary changes it and nothing changed it
+    // back, so the next fare you completed was headed "Shift over".
+    document.querySelector('#summary h2').textContent = 'Fare complete';
+
     const rows = [
         ['Fare', window.fmt.money(result.fare)],
         ['Tip', window.fmt.money(result.tip)],
@@ -110,7 +120,7 @@ function showSummary(result) {
 
     document.getElementById('summary-rows').innerHTML = `
         ${rows.map(([label, value]) => `<div class="r"><span>${label}</span><span>${value}</span></div>`).join('')}
-        <div class="r big"><span>Paid</span><span>${window.fmt.money((result.fare || 0) + (result.tip || 0))}</span></div>`;
+        <div class="r total"><span>Paid</span><span>${window.fmt.money((result.fare || 0) + (result.tip || 0))}</span></div>`;
 
     summary.classList.remove('hidden');
     setTimeout(() => summary.classList.add('hidden'), 6000);
@@ -130,7 +140,7 @@ window.showShiftSummary = (shift) => {
     document.querySelector('#summary h2').textContent = 'Shift over';
     document.getElementById('summary-rows').innerHTML = `
         ${rows.map(([label, value]) => `<div class="r"><span>${label}</span><span>${value}</span></div>`).join('')}
-        <div class="r big"><span>Earned</span><span>${window.fmt.money(shift.earned || 0)}</span></div>`;
+        <div class="r total"><span>Earned</span><span>${window.fmt.money(shift.earned || 0)}</span></div>`;
 
     summary.classList.remove('hidden');
 };
@@ -146,6 +156,7 @@ window.addEventListener('message', (event) => {
             break;
         case 'close':
             terminal.classList.add('hidden');
+            document.body.classList.remove('terminal-open');
             break;
         case 'meter':
             window.Meter.update(message.data);

@@ -34,11 +34,15 @@ window.Panels.shift = {
             <div class="grid two">
                 <div class="card">
                     <h3>Work</h3>
-                    <div class="sub">${state.hasFare
-                        ? 'You have a fare running. Finish it before picking up another.'
-                        : 'Call the dispatcher for the nearest passenger, or wait for someone to hail you.'}</div>
+                    <div class="sub">${state.openEnded
+                        ? 'Someone hailed you. Drive them where they ask, then end the ride to take the fare.'
+                        : state.hasFare
+                            ? 'You have a fare running. Finish it before picking up another.'
+                            : 'Call the dispatcher for the nearest passenger, or wait for someone to hail you.'}</div>
                     <div class="row wrap">
-                        <button class="btn" data-act="requestFare" ${state.hasFare ? 'disabled' : ''}>Find a fare</button>
+                        ${state.openEnded
+                            ? '<button class="btn good" data-act="endRide">End the ride</button>'
+                            : `<button class="btn" data-act="requestFare" ${state.hasFare ? 'disabled' : ''}>Find a fare</button>`}
                         <button class="btn quiet" data-act="cancelFare" ${state.hasFare ? '' : 'disabled'}>Drop the fare</button>
                     </div>
                 </div>

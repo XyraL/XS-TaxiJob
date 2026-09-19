@@ -72,12 +72,24 @@ lib.callback.register('XS-TaxiJob:server:getState', function(src)
         vehicle = driver and driver.vehicle or nil,
         totals = driver and driver.totals or { fares = 0, earned = 0, distance = 0 },
         hasFare = driver ~= nil and driver.fare ~= nil,
+        -- A hailed ride has no destination, so it is the driver who says when
+        -- it is over. The panel needs to know to offer that.
+        openEnded = driver ~= nil and driver.fare ~= nil and driver.fare.openEnded == true,
         deposit = Config.Vehicles.deposit,
         stats = summary,
         vehicles = vehicles,
         recent = Stats.Recent(citizenid, 10),
         leaderboard = Stats.Leaderboard(10),
-        hailEnabled = Config.Hail.enabled,
+        -- Both the config gate and the live switch in the admin panel.
+        -- Reading only the config meant unticking the switch changed nothing
+        -- the drivers could see.
+        hailEnabled = Config.Hail.enabled and (not Admin or Admin.settings.hailEnabled ~= false),
+
+        -- Sent from here so every path agrees. It used to be attached on the
+        -- client, in the getState callback only, which the terminal's own
+        -- open message does not go through — so the Admin tab was hidden
+        -- every time the terminal was opened.
+        isAdmin = Admin ~= nil and Admin.IsAdmin(src) or false,
     }
 end)
 
@@ -139,16 +151,59 @@ RegisterNetEvent('XS-TaxiJob:server:registerCab', function(netId)
     if not driver or type(netId) ~= 'number' then return end
     driver.vehicle.netId = netId
 
-    local vehicle = NetworkGetEntityFromNetworkId(netId)
-    if vehicle and vehicle ~= 0 then Keys.GiveServer(src, vehicle) end
+    --[[ The cab is spawned on the client, so the entity does not exist on this
+         side the instant its net id arrives. Asking once and giving up is why
+         the driver sometimes ends up sat in a cab that will not start, with
+         nothing in the console — it worked or it did not depending on how busy
+         the server was that tick.
+
+         Half a second of asking, then a word about it rather than silence. ]]
+    local vehicle
+
+    for _ = 1, 50 do
+        vehicle = NetworkGetEntityFromNetworkId(netId)
+        if vehicle and vehicle ~= 0 and DoesEntityExist(vehicle) then break end
+
+        vehicle = nil
+        Wait(10)
+    end
+
+    if not vehicle then
+        print(('^3[XS-TaxiJob]^0 cab %d never reached the server, so %s has no keys')
+            :format(netId, Framework.GetName(src)))
+        return
+    end
+
+    Keys.GiveServer(src, vehicle)
 end)
 
 lib.callback.register('XS-TaxiJob:server:endShift', function(src, data)
     local driver = Drivers[src]
     if not driver then return { ok = false, error = 'You are not signed on.' } end
 
-    local returned = type(data) == 'table' and data.returned == true
-    local bodyHealth = type(data) == 'table' and tonumber(data.bodyHealth) or 1000.0
+    -- Worked out here, from the cab. The client used to be asked whether it
+    -- parked up and how bent the cab was, which is the one question it has a
+    -- reason to lie about: answer "yes, and it is mint" and the deposit and
+    -- the damage fee both stop existing.
+    local returned = false
+    local bodyHealth = 1000.0
+
+    local netId = driver.vehicle and driver.vehicle.netId
+    local cab = netId and NetworkGetEntityFromNetworkId(netId)
+
+    if cab and cab ~= 0 and DoesEntityExist(cab) then
+        bodyHealth = GetVehicleBodyHealth(cab)
+
+        local here = GetEntityCoords(cab)
+
+        for _, slot in ipairs(Config.Depot.cabSpawns) do
+            if #(here - vec3(slot.x, slot.y, slot.z)) <= Config.Vehicles.returnDistance then
+                returned = true
+                break
+            end
+        end
+    end
+
     local refund = 0
     local fee = 0
 
@@ -175,10 +230,6 @@ lib.callback.register('XS-TaxiJob:server:endShift', function(src, data)
 
     summary.stats = Stats.Summary(Framework.GetCitizenId(src))
     return { ok = true, summary = summary }
-end)
-
-lib.callback.register('XS-TaxiJob:server:leaderboard', function(src)
-    return Stats.Leaderboard(15)
 end)
 
 AddEventHandler('playerDropped', function()

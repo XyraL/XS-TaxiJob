@@ -28,7 +28,7 @@ Config.Depot = {}
 
 -- Downtown Cab Co. in Alta. Move this if your map uses a different building.
 Config.Depot.blip = {
-    coords = vec3(895.10, -179.20, 74.70),
+    coords = vec3(895.47, -178.92, 73.70),
     sprite = 198,
     color  = 5,
     scale  = 0.75,
@@ -38,7 +38,7 @@ Config.Depot.blip = {
 -- The terminal players interact with to sign on. A target zone is placed here;
 -- with no target resource running, this becomes a marker and an E prompt.
 Config.Depot.terminal = {
-    coords   = vec4(903.13, -173.05, 74.15, 148.0),
+    coords   = vec4(895.47, -178.92, 73.70, 242.21),
     size     = vec3(1.2, 1.2, 1.4),
     distance = 2.0,
     label    = 'Taxi terminal',
@@ -47,10 +47,10 @@ Config.Depot.terminal = {
 -- Cab spawn and return slots. A free slot is picked on rental; returning
 -- means parking within Config.Vehicles.returnDistance of any of them.
 Config.Depot.cabSpawns = {
-    vec4(910.51, -177.46, 74.03, 237.0),
-    vec4(914.03, -180.65, 73.94, 237.0),
-    vec4(917.53, -183.83, 73.86, 237.0),
-    vec4(921.02, -187.03, 73.79, 237.0),
+    vec4(908.57, -183.39, 72.75, 236.27),
+    vec4(906.94, -186.33, 72.61, 237.31),
+    vec4(905.22, -189.03, 72.43, 239.54),
+    vec4(903.63, -191.92, 72.39, 238.21),
 }
 
 -- ─────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ Config.Reputation.tiers = {
 Config.Fares = {}
 
 Config.Fares.searchRadius = 1200.0     -- only offer pickups within this range
-Config.Fares.offerTimeout = 30         -- seconds to accept an offer
+Config.Fares.pickupTimeout = 180       -- seconds to reach the pickup before the fare gives up
 Config.Fares.pickupDistance = 12.0     -- how close to the pickup before the ped boards
 Config.Fares.dropoffDistance = 15.0
 Config.Fares.boardingTimeout = 60      -- seconds a ped waits at the kerb before giving up
@@ -268,3 +268,53 @@ Config.Shift.awayTimeout = 300
 -- Admin
 -- ─────────────────────────────────────────────────────────────
 Config.AdminAce = 'xstaxi.admin'
+
+-- ─────────────────────────────────────────────────────────────
+-- Uniform
+-- Put drivers in cab company kit while they are signed on, and give them their
+-- own clothes back when they sign off. Off by default — a server that lets
+-- people drive in whatever they own should leave it that way.
+--
+-- This sets clothing components directly, so it needs no appearance resource.
+-- Component ids: 1 mask, 3 arms, 4 legs, 5 bag, 6 shoes, 7 neck, 8 undershirt,
+-- 9 vest, 10 badge, 11 top. Prop ids: 0 hat, 1 glasses, 2 ears.
+--
+-- Finding the numbers: use your clothing menu to build the outfit on a
+-- character, then read the component values off it.
+-- ─────────────────────────────────────────────────────────────
+Config.Uniform = {}
+
+Config.Uniform.enabled = false
+
+-- Hand the outfit to your own appearance resource instead of setting
+-- components here. It must export SetTaxiUniform(outfit) and ClearTaxiUniform().
+-- If the export is missing or errors, the components below are used anyway.
+Config.Uniform.useExport = false
+Config.Uniform.exportResource = ''
+
+-- drawable is the clothing item, texture is its colour variant.
+Config.Uniform.male = {
+    components = {
+        [11] = { drawable = 55,  texture = 0 },   -- top
+        [8]  = { drawable = 15,  texture = 0 },   -- undershirt
+        [4]  = { drawable = 10,  texture = 0 },   -- legs
+        [6]  = { drawable = 25,  texture = 0 },   -- shoes
+        [3]  = { drawable = 0,   texture = 0 },   -- arms
+    },
+    props = {
+        [0] = { drawable = 8, texture = 0 },      -- cap
+    },
+}
+
+Config.Uniform.female = {
+    components = {
+        [11] = { drawable = 56,  texture = 0 },
+        [8]  = { drawable = 14,  texture = 0 },
+        [4]  = { drawable = 11,  texture = 0 },
+        [6]  = { drawable = 25,  texture = 0 },
+        [3]  = { drawable = 0,   texture = 0 },
+    },
+    props = {
+        [0] = { drawable = 8, texture = 0 },
+    },
+}

@@ -54,6 +54,21 @@ end
 
 function DespawnCab()
     if Taxi.cab and DoesEntityExist(Taxi.cab) then
+        -- Migration is switched on for this entity, so another player standing
+        -- near it can be the owner — and deleting something you do not own
+        -- does nothing at all. The cab then sits in the bay forever, because
+        -- Taxi.cab has already been cleared by the time anyone notices.
+        if not NetworkHasControlOfEntity(Taxi.cab) then
+            NetworkRequestControlOfEntity(Taxi.cab)
+
+            for _ = 1, 60 do
+                if NetworkHasControlOfEntity(Taxi.cab) then break end
+                Wait(0)
+                NetworkRequestControlOfEntity(Taxi.cab)
+            end
+        end
+
+        SetEntityAsMissionEntity(Taxi.cab, true, true)
         DeleteVehicle(Taxi.cab)
     end
     Taxi.cab = nil

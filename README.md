@@ -30,6 +30,37 @@ cabs and a bigger cut of every fare.
 
 No whitelist. Anyone can drive.
 
+
+## Uniforms
+
+`Config.Uniform.enabled` puts drivers in cab company kit for the length of a
+shift and hands their own clothes back when they sign off.
+
+It writes clothing components straight onto the ped, so there is no appearance
+resource to install and nothing to keep in sync. Build the outfit you want on a
+character with your clothing menu, read the component numbers off it, and put
+them in `Config.Uniform.male` / `.female`.
+
+If you would rather your own appearance resource handled it, set
+`useExport = true` and `exportResource` to its name. It needs to export
+`SetTaxiUniform(outfit)` and `ClearTaxiUniform()`. If either is missing or
+throws, the components are used instead, so a broken export downgrades rather
+than leaving someone half-dressed.
+
+## Admin
+
+Grant `Config.AdminAce` (default `xstaxi.admin`) and an **Admin** tab appears
+in the terminal. Nobody else can see it, and every callback behind it checks the
+ace again on the server — the hidden tab is a convenience, not the security.
+
+It shows who is signed on, what they are driving, the fare they are running and
+what they have taken this shift, plus all-time payout across the server. Per
+driver: adjust standing, clear a fare that has got stuck, or end their shift.
+
+The three switches at the top — pause dispatch, allow hailing, fare multiplier —
+take effect immediately and are deliberately not saved. A restart puts the
+server back to whatever config.lua says.
+
 ## Requirements
 
 - `ox_lib`

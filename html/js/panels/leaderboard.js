@@ -7,7 +7,7 @@ window.Panels.leaderboard = {
                 <h3>Company board</h3>
                 <div class="sub">Ranked on reputation, then on takings.</div>
                 ${rows.length ? `
-                    <table>
+                    <table class="table">
                         <thead>
                             <tr><th style="width:44px">#</th><th>Driver</th><th>Tier</th><th>Fares</th><th>Rating</th><th style="text-align:right">Earned</th></tr>
                         </thead>
