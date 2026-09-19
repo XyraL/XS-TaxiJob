@@ -32,6 +32,30 @@ function ClearFareState()
     StopMeter()
 end
 
+--[[ Put a point on the nearest road and name it after that road.
+
+     The server picks a bearing and a distance and has no road network to ask,
+     so its spot can land in a garden or on a central reservation. This is the
+     half that knows where the tarmac is. ]]
+local function onStreet(point)
+    local found, node, heading = GetNthClosestVehicleNodeWithHeading(
+        point.x, point.y, point.z, 1, 1, 3.0, 0)
+
+    if found and node then
+        point.x, point.y, point.z = node.x, node.y, node.z
+        point.w = heading or point.w or 0.0
+    end
+
+    -- Two returns: the street and whatever it crosses. Only the first is
+    -- wanted, and taking it into one local is what truncates it.
+    local street = GetStreetNameAtCoord(point.x, point.y, point.z)
+    local name = street and street ~= 0 and GetStreetNameFromHashKey(street)
+
+    if name and name ~= '' and name ~= 'NULL' then point.label = name end
+
+    return point
+end
+
 local function spawnPassenger(fare)
     local hash = joaat(fare.ped)
     RequestModel(hash)
@@ -43,7 +67,16 @@ local function spawnPassenger(fare)
     end
     if not HasModelLoaded(hash) then return nil end
 
-    local ped = CreatePed(4, hash, fare.pickup.x, fare.pickup.y, fare.pickup.z - 1.0, fare.pickup.w or 0.0, true, false)
+    --[[ Feet on the floor, whichever kind of spot this is.
+
+         A named point's z was captured at head height, so it wanted a metre
+         off it. A snapped road node's z IS the tarmac, so taking a metre off
+         that one buries the passenger in the road. Ask the map instead, and
+         keep the old guess only for when the map has not loaded. ]]
+    local found, groundZ = GetGroundZFor_3dCoord(fare.pickup.x, fare.pickup.y, fare.pickup.z + 1.0, false)
+    local z = found and groundZ or (fare.pickup.z - 1.0)
+
+    local ped = CreatePed(4, hash, fare.pickup.x, fare.pickup.y, z, fare.pickup.w or 0.0, true, false)
     SetModelAsNoLongerNeeded(hash)
 
     if not DoesEntityExist(ped) then return nil end
@@ -51,7 +84,11 @@ local function spawnPassenger(fare)
     SetEntityAsMissionEntity(ped, true, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     SetPedCanBeTargetted(ped, false)
-    TaskStandStill(ped, Config.Fares.boardingTimeout * 1000)
+
+    -- They are put out early now, so they can be stood here a while. Standing
+    -- still for a fixed number of seconds looked like a mannequin and ran out
+    -- before the cab arrived.
+    TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT', 0, true)
 
     return ped
 end
@@ -64,14 +101,22 @@ local function boardPassenger(fare)
     if fare.kind == 'player' then
         Framework.Notify('Wait for your passenger to get in.', 'inform')
     else
-        fare.passengerPed = spawnPassenger(fare)
+        -- Normally already stood at the kerb, put there on the way in. The
+        -- spawn here is for the case where the driver arrived before the
+        -- passenger could be streamed.
+        fare.passengerPed = fare.passengerPed or spawnPassenger(fare)
+
         if not fare.passengerPed then
             Framework.Notify('Your fare gave up waiting.', 'error')
             CancelFare('failed')
             return false
         end
 
+        -- TaskEnterVehicle walks them over, so boarding starting further out
+        -- is what makes them come to the cab rather than the cab having to
+        -- land on the marker.
         ClearPedTasks(fare.passengerPed)
+        SetPedKeepTask(fare.passengerPed, true)
         TaskEnterVehicle(fare.passengerPed, Taxi.cab, Config.Fares.boardingTimeout * 1000, 2, 1.6, 1, 0)
     end
 
@@ -152,10 +197,23 @@ local function runFare(fare)
     Taxi.fare = fare
     fare.stage = 'toPickup'
 
+    -- A random spot is a bearing and a distance until this puts it on a road
+    -- and names it. Named points are already somewhere real.
+    if fare.random then
+        onStreet(fare.pickup)
+        if fare.dropoff then onStreet(fare.dropoff) end
+    end
+
     setBlip(fare.pickup, ('Pickup - %s'):format(fare.pickup.label), 280, 5)
     Framework.Notify(('Pickup at %s.'):format(fare.pickup.label), 'inform')
 
     local deadline = GetGameTimer() + (Config.Fares.pickupTimeout * 1000)
+
+    -- A player walks to you, so you have to get close. An NPC comes to the
+    -- cab, so you only have to get near enough for them to see you.
+    local reach = fare.kind == 'player'
+        and Config.Fares.pickupDistance
+        or Config.Fares.walkDistance
 
     while true do
         Wait(500)
@@ -174,9 +232,17 @@ local function runFare(fare)
 
         local here = GetEntityCoords(PlayerPedId())
         local away = #(here - vec3(fare.pickup.x, fare.pickup.y, fare.pickup.z))
+
+        -- Put them on the pavement while the cab is still on its way, so they
+        -- are stood waiting when it comes round the corner instead of
+        -- appearing in front of the bonnet.
+        if fare.kind ~= 'player' and not fare.passengerPed and away <= Config.Fares.spawnDistance then
+            fare.passengerPed = spawnPassenger(fare)
+        end
+
         local stopped = not CabExists() or GetEntitySpeed(Taxi.cab) < 3.0
 
-        if away <= Config.Fares.pickupDistance and stopped then
+        if away <= reach and stopped then
             break
         end
     end

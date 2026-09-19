@@ -93,17 +93,56 @@ local function settle(driver, fare, reported)
     return { fare = total, tip = tip, rating = rating, distance = distance, duration = duration }
 end
 
+--[[ A point on the map at a random bearing and distance from another.
+
+     Deliberately not snapped to a road here — the server has no road network
+     to ask. The client puts it on the nearest one, which moves it by the width
+     of a garden at most, and settle() already tolerates far more than that. ]]
+local function randomAnchor(from, minAway, maxAway)
+    local angle = math.random() * math.pi * 2
+    local away = minAway + math.random() * math.max(0.0, maxAway - minAway)
+
+    return vec3(from.x + math.cos(angle) * away, from.y + math.sin(angle) * away, from.z)
+end
+
+local function randomRun(near)
+    local pickup = randomAnchor(near, 120.0, Config.Fares.searchRadius)
+    local dropoff = randomAnchor(pickup, Config.Fares.minTripDistance, Config.Fares.maxTripDistance)
+
+    return {
+        coords = vec4(pickup.x, pickup.y, pickup.z, 0.0),
+        label = 'the kerb',
+        area = 'street',
+    }, {
+        coords = vec4(dropoff.x, dropoff.y, dropoff.z, 0.0),
+        label = 'the drop-off',
+        area = 'street',
+    }
+end
+
 function BuildFare(driver, kind, override)
     local summary = Stats.Summary(driver.citizenid)
     local points = allowedPoints(summary and summary.tier or 1)
-    if #points < 2 then return nil end
+
+    -- Only the named list needs two of them to pick from. A random street
+    -- pickup has nothing to choose between.
+    if not Config.Fares.randomStreets and #points < 2 then return nil end
 
     local near = override and override.pickupCoords or vec3(0.0, 0.0, 0.0)
-    local pickup = override and override.pickup or pickPickup(points, near)
-    if not pickup then return nil end
 
-    local dropoff = override and override.dropoff or pickDropoff(points, pickup)
-    if not dropoff then return nil end
+    local pickup, dropoff
+
+    if override and override.pickup then
+        pickup = override.pickup
+        dropoff = override.dropoff
+    elseif Config.Fares.randomStreets then
+        pickup, dropoff = randomRun(near)
+    else
+        pickup = pickPickup(points, near)
+        dropoff = pickup and pickDropoff(points, pickup)
+    end
+
+    if not pickup or not dropoff then return nil end
 
     nextFareId = nextFareId + 1
 
@@ -119,6 +158,9 @@ function BuildFare(driver, kind, override)
             label = dropoff.label, area = dropoff.area,
         },
         crossTown = pickup.area ~= dropoff.area,
+        -- The client snaps these to the road network and renames them after
+        -- the street. Named points are already where somebody put them.
+        random = pickup.area == 'street' or nil,
         night = isNight(),
         straightLine = #(pointVec(dropoff) - pointVec(pickup)),
         ped = Config.Fares.peds[math.random(#Config.Fares.peds)],
@@ -137,8 +179,11 @@ lib.callback.register('XS-TaxiJob:server:requestFare', function(src, data)
     if not driver or not driver.onDuty then return { ok = false, error = 'You are not signed on.' } end
     if driver.fare then return { ok = false, error = 'You already have a fare.' } end
 
-    local coords = type(data) == 'table' and data.coords or nil
-    local near = coords and vec3(coords.x or 0.0, coords.y or 0.0, coords.z or 0.0) or vec3(0.0, 0.0, 0.0)
+    -- Asked of the server, not of the client. It only decides where the work
+    -- is, so it was never worth much — but there is no reason to take the
+    -- client's word for something this side can see.
+    local ped = GetPlayerPed(src)
+    local near = ped and ped ~= 0 and GetEntityCoords(ped) or vec3(0.0, 0.0, 0.0)
 
     local fare = BuildFare(driver, 'npc', { pickupCoords = near })
     if not fare then return { ok = false, error = 'No fares available right now.' } end

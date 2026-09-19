@@ -216,7 +216,30 @@ Config.Fares = {}
 
 Config.Fares.searchRadius = 1200.0     -- only offer pickups within this range
 Config.Fares.pickupTimeout = 180       -- seconds to reach the pickup before the fare gives up
-Config.Fares.pickupDistance = 12.0     -- how close to the pickup before the ped boards
+Config.Fares.pickupDistance = 12.0     -- how close a PLAYER hail needs you before they can get in
+
+-- Pickups and drop-offs anywhere on the road network rather than from the
+-- named list below. The server picks the spots; the client puts them on the
+-- nearest road, so they land at a kerb rather than in somebody's garden.
+--
+-- Off falls back to Config.Fares.points, which is still there and still works.
+Config.Fares.randomStreets = true
+
+-- How far apart a random pickup and its drop-off have to be, in metres. Too
+-- small and every fare is round the corner.
+Config.Fares.minTripDistance = 600.0
+
+-- And the furthest. The straight line, not the drive.
+Config.Fares.maxTripDistance = 2600.0
+
+-- How far out the passenger is put on the pavement. Far enough that they are
+-- stood waiting as you come round the corner, rather than appearing in front
+-- of the bonnet — and inside the distance the game will stream a ped at.
+Config.Fares.spawnDistance = 170.0
+
+-- How close you have to get before they leave the kerb and walk to the cab.
+-- They will come to you; you do not have to park on the marker.
+Config.Fares.walkDistance = 32.0
 Config.Fares.dropoffDistance = 15.0
 Config.Fares.boardingTimeout = 60      -- seconds a ped waits at the kerb before giving up
 Config.Fares.cooldownBetween = 8       -- seconds after a drop-off before the next offer
