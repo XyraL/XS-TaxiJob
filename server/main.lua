@@ -90,6 +90,10 @@ lib.callback.register('XS-TaxiJob:server:getState', function(src)
         -- open message does not go through — so the Admin tab was hidden
         -- every time the terminal was opened.
         isAdmin = Admin ~= nil and Admin.IsAdmin(src) or false,
+
+        -- The roof lamp. Off means nobody flags the cab down, which is how a
+        -- driver heading back at the end of a shift stops being stopped.
+        lamp = driver ~= nil and driver.lamp ~= false,
     }
 end)
 

@@ -14,27 +14,31 @@
 <body>
 
 <div id="terminal" class="hidden">
-    <div class="panel">
-        <header>
-            <div class="brand">
+    <div class="panel shell">
+        <nav class="rail">
+            <div class="rail-brand">
                 <span class="lamp"></span>
-                <div>
-                    <h1>Downtown Cab Co.</h1>
-                    <p id="driver-line">Driver terminal</p>
-                </div>
+                <h1>Downtown Cab Co.</h1>
+                <p id="driver-line">Driver terminal</p>
             </div>
-            <button id="close" type="button" class="ghost">Close</button>
-        </header>
 
-        <nav class="tabs">
-            <button class="tab active" data-tab="shift">Shift</button>
-            <button class="tab" data-tab="vehicles">Cabs</button>
-            <button class="tab" data-tab="stats">Record</button>
-            <button class="tab" data-tab="leaderboard">Board</button>
-            <button class="tab admin-tab hidden" data-tab="admin">Admin</button>
+            <button class="tab rail-item active" data-tab="shift">
+                <span class="n">Shift</span>
+                <span class="pill on" id="rail-duty" hidden>On</span>
+            </button>
+            <button class="tab rail-item" data-tab="vehicles"><span class="n">Cabs</span></button>
+            <button class="tab rail-item" data-tab="stats"><span class="n">Record</span></button>
+            <button class="tab rail-item" data-tab="leaderboard"><span class="n">Board</span></button>
+            <button class="tab rail-item admin-tab hidden" data-tab="admin"><span class="n">Admin</span></button>
         </nav>
 
-        <main id="panel"></main>
+        <div class="screen">
+            <div class="screen-head">
+                <span class="screen-title" id="screen-title">Shift</span>
+                <button id="close" type="button" class="ghost">Close</button>
+            </div>
+            <main id="panel"></main>
+        </div>
     </div>
 </div>
 

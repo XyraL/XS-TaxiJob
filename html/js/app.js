@@ -46,7 +46,18 @@ const driverLine = document.getElementById('driver-line');
 let state = null;
 let activeTab = 'shift';
 
+const TITLES = {
+    shift: 'Shift',
+    vehicles: 'Cabs',
+    stats: 'Record',
+    leaderboard: 'Board',
+    admin: 'Admin',
+};
+
 function renderPanel() {
+    const title = document.getElementById('screen-title');
+    if (title) title.textContent = TITLES[activeTab] || 'Shift';
+
     const panel = window.Panels[activeTab];
     panelHost.innerHTML = panel && state ? panel.render(state) : '<div class="empty">Nothing to show.</div>';
     if (panel && panel.wire && state) panel.wire(panelHost, state);
@@ -59,6 +70,10 @@ function setState(next) {
 
     const adminTab = document.querySelector('.tab.admin-tab');
     if (adminTab) adminTab.classList.toggle('hidden', state.isAdmin !== true);
+
+    // The rail's Shift item carries the live state a row of tabs could not.
+    const duty = document.getElementById('rail-duty');
+    if (duty) duty.hidden = state.onDuty !== true;
 
     const stats = state.stats || {};
     driverLine.textContent = state.onDuty

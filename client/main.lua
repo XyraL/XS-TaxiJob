@@ -54,6 +54,16 @@ RegisterNUICallback('getState', function(_, cb)
     cb(lib.callback.await('XS-TaxiJob:server:getState', false))
 end)
 
+RegisterNUICallback('setLamp', function(data, cb)
+    if not Taxi.onDuty then
+        cb({ ok = false, error = 'You are not signed on.' })
+        return
+    end
+
+    SetLamp(data and data.on == true)
+    cb({ ok = true })
+end)
+
 RegisterNUICallback('startShift', function(data, cb)
     if Taxi.onDuty then
         cb({ ok = false, error = 'You are already signed on.' })

@@ -148,7 +148,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
     background: var(--panel-2);
 }
 
-.tab {
+.tabs .tab {
     position: relative;
     padding: 12px 16px;
     font-family: var(--display);
@@ -159,7 +159,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
     transition: color .16s var(--ease);
 }
 
-.tab::after {
+.tabs .tab::after {
     content: '';
     position: absolute;
     left: 12px; right: 12px; bottom: -1px;
@@ -171,12 +171,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
     box-shadow: 0 0 10px var(--amber-glow);
 }
 
-.tab:hover { color: var(--muted); }
-.tab.active { color: var(--text); }
-.tab.active::after { transform: scaleX(1); }
+.tabs .tab:hover { color: var(--muted); }
+.tabs .tab.active { color: var(--text); }
+.tabs .tab.active::after { transform: scaleX(1); }
 
-.tab.admin-tab { margin-left: auto; color: var(--bad); }
-.tab.admin-tab::after { background: var(--bad); box-shadow: 0 0 10px rgba(229,87,77,.4); }
+.tabs .tab.admin-tab { margin-left: auto; color: var(--bad); }
+.tabs .tab.admin-tab::after { background: var(--bad); box-shadow: 0 0 10px rgba(229,87,77,.4); }
 
 #panel {
     flex: 1;
@@ -459,6 +459,101 @@ input:focus, select:focus {
 .toggle input:checked + .toggle-track::after { left: 17px; background: var(--amber); box-shadow: 0 0 8px var(--amber-glow); }
 
 /* ── Meter ──────────────────────────────────────────────────────────────── */
+
+/* ── The terminal's rail ────────────────────────────────────────────────── */
+/* A row of tabs spends a whole band on five words and has nowhere to put the
+   state of each one. A rail is the console's controls beside its screen, and
+   it has room for a pill saying you are on duty. */
+
+/* #terminal .panel carries an id, so a plain .panel.shell loses to it and its
+   flex-direction:column stacked the rail on top of the screen. Same weight
+   wins. */
+#terminal .panel.shell {
+    width: min(1020px, 90vw);
+    height: min(660px, 84vh);
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: minmax(0, 1fr);
+    padding: 0;
+    overflow: hidden;
+}
+
+.rail {
+    background: var(--panel-2);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    min-width: 0;
+}
+
+.rail-brand {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 10px;
+}
+/* .lamp is a span with a width and a height, which an inline box ignores. It
+   only ever worked because its old parent was a flex container and it was a
+   flex item. This one is not. */
+.rail-brand .lamp { display: block; margin-bottom: 10px; }
+.rail-brand h1 { font-family: var(--display); font-size: 15px; font-weight: 600; }
+.rail-brand p { font-size: 11px; color: var(--faint); margin-top: 2px; }
+
+/* The same idiom as .tile::before, turned ninety degrees. */
+.rail .rail-item {
+    position: relative;
+    height: 38px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: 0;
+    text-align: left;
+    font-family: var(--display);
+    font-size: 12.5px;
+    letter-spacing: .05em;
+    color: var(--faint);
+    transition: color .14s var(--ease), background .14s var(--ease);
+}
+.rail .rail-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0;
+    width: 2px; height: 100%;
+    background: var(--amber);
+    transform: scaleY(0);
+    transition: transform .16s var(--ease);
+}
+.rail .rail-item:hover { color: var(--muted); background: rgba(255,255,255,.02); }
+.rail .rail-item.active { color: var(--text); background: rgba(255,255,255,.03); }
+.rail .rail-item.active::before { transform: scaleY(1); }
+.rail .rail-item .n { flex: 1; min-width: 0; }
+.rail .rail-item .pill { font-size: 9px; padding: 1px 6px; }
+
+/* Pinned to the bottom, and red, because it is not one of the four. */
+.rail .rail-item.admin-tab {
+    margin-top: auto;
+    margin-left: 0;
+    color: var(--bad);
+}
+.rail .rail-item.admin-tab::before { background: var(--bad); }
+
+.screen { display: flex; flex-direction: column; min-width: 0; }
+
+/* Thin, because the identity block has moved into the rail and the body gets
+   the height back. */
+.screen-head {
+    height: 46px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+}
+.screen-title { font-family: var(--display); font-size: 13px; font-weight: 600; }
+.screen-head .ghost { margin-left: auto; }
 
 /* ── The meter ──────────────────────────────────────────────────────────── */
 
