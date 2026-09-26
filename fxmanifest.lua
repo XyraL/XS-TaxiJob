@@ -5,7 +5,7 @@ lua54 'yes'
 name 'XS-TaxiJob'
 author 'XyraL'
 description 'Civilian taxi job with a live meter, NPC and player fares, ride ratings and a reputation ladder. Standalone for QBox/QBCore.'
-version '1.2.0'
+version '1.3.0'
 
 -- Works on QBox (qbx_core) OR QBCore (qb-core). The bridge auto-detects.
 -- Target: ox_target / qb-target, or a built-in marker and key prompt when the

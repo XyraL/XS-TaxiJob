@@ -23,12 +23,27 @@
 
 ## What it is
 
-Sign on at the depot, take a cab against a deposit, and run fares. The meter
+Talk to the dispatcher, take a cab against a deposit, and run fares. The meter
 starts when someone gets in and runs on distance plus waiting time. How you
 drive sets the tip, the tip feeds reputation, and reputation unlocks better
 cabs and a bigger cut of every fare.
 
 No whitelist. Anyone can drive.
+
+
+## Three ways to get work
+
+**Put the lamp on and drive.** People on the pavement flag the cab down as you
+pass. Pull over and they get in; drive on and they do not. `/lamp` turns it off
+when you are heading back to the depot and would rather not be stopped.
+
+**Call dispatch.** A pickup anywhere on the road network, with a drop-off the
+other side of it. The passenger is stood at the kerb by the time you get there
+and walks to the cab rather than waiting for you to park on the marker.
+
+**Someone rings for a cab.** A player types `/taxi` and every driver with a
+lamp on gets the call. First to take it gets it. That one is open-ended — no
+destination, the meter runs until you end the ride where they ask.
 
 
 ## Uniforms
@@ -46,6 +61,13 @@ If you would rather your own appearance resource handled it, set
 `SetTaxiUniform(outfit)` and `ClearTaxiUniform()`. If either is missing or
 throws, the components are used instead, so a broken export downgrades rather
 than leaving someone half-dressed.
+
+## The terminal
+
+`/cab` opens it from wherever you are. At the depot anyone can use it; away
+from it you have to be signed on, so the cab has a terminal in it without the
+depot becoming something you can skip. Put a key in `Config.Depot.key` if you
+want one, or bind it yourself under Settings, Key Bindings, FiveM.
 
 ## Admin
 
@@ -66,8 +88,9 @@ server back to whatever config.lua says.
 - `ox_lib`
 - `oxmysql`
 - Either `qbx_core` **or** `qb-core` — the bridge auto-detects which.
-- `ox_target` or `qb-target` if you run one. Without either, the depot terminal
-  falls back to a marker and an E prompt, and the job works exactly the same.
+- `ox_target` or `qb-target` if you run one. The dispatcher at the depot is a
+  ped you talk to, which needs one of them; without either it falls back to a
+  marker and an E prompt on the same spot and the job works exactly the same.
 - A vehicle-keys resource if your server runs one. `Config.Bridges.keys` is on
   `'auto'` and finds `qbx_vehiclekeys`, `qs-vehiclekeys` or `qb-vehiclekeys` by
   itself. Without this, the rented cab's engine will not start.

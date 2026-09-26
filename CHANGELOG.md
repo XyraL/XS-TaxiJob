@@ -1,5 +1,81 @@
 # Changelog
 
+## 1.3.0
+
+Flag-downs, and the interface rebuilt around them.
+
+### Added
+
+- **Put the lamp on and people flag you down.** Somebody on the pavement puts a
+  hand out as the cab goes past; pulling over takes them, driving on does not.
+  `/lamp` is the off switch, so a driver heading back at the end of a shift can
+  stop being stopped. Which pedestrian is picked is decided on the client
+  because only that end can see them — but the claim is on the place, rounded
+  to a cell, because an ambient ped is a different entity on every machine. The
+  server owns the claim, the destination and the money.
+- **A dispatcher to talk to.** The depot is a person now rather than a circle on
+  the floor. Falls back to the old marker when the ped is switched off, the
+  model will not load, or the server runs no target resource.
+- **`/cab` opens the terminal from the driver's seat.** At the depot anyone can
+  use it; away from it you need a shift.
+- **Pickups and drop-offs anywhere on the road network**, put on the nearest
+  road by the client and named after the street they land on. The old named
+  list still works behind `Config.Fares.randomStreets = false`.
+- **Passengers are already there when you arrive.** Put on the pavement 170m
+  out and stood waiting, and they walk to the cab from 32m rather than making
+  you park on the marker.
+- **`tools/`** — nine checkers over the manifest, event and NUI wiring, config
+  keys, multi-return leaks, net-id guards, the runtime split, native names and
+  Lua syntax. `node tools/check-all.mjs`.
+
+### Changed
+
+- **The meter is a meter.** A fixed 300×143 unit that never changes size
+  between states, with a sign band that inverts to solid amber when the cab is
+  hired — the way a roof lamp goes out when it is taken. The big figure changes
+  meaning with the state and says which it is: the shift take when you are
+  empty, the pickup countdown on the way to one, the flagfall as they get in,
+  then the fare. Money climbs between ticks; countdowns do not. Your rating is
+  five pips that go out as you lose stars, and the unit jolts when one does.
+- **A finished fare docks a receipt above the meter** instead of throwing a card
+  over the middle of the screen while you are driving. Ending a shift still
+  gets the screen.
+- **The terminal has a rail instead of a tab row**, carrying the brand, an On
+  pill against Shift while you are signed on, and Admin pinned at the bottom.
+- **Signing on happens on the Shift screen.** Its only action used to be a
+  button that sent you to another tab to do the actual thing.
+
+### Fixed
+
+- **The big black box behind the HUD.** `backdrop-filter` over a transparent
+  page has nothing to blur in FiveM's CEF and paints the region black instead —
+  and the meter's shadow went opaque with it, which is why the box was so much
+  bigger than the card.
+- **A passenger getting in dragged out whoever was already sitting there.**
+  `TaskEnterVehicle` had seat 2 hardcoded.
+- **The pickup deadline was invisible.** 180 seconds, and the first you knew was
+  being told the fare had given up.
+- **The deposit was whatever the client said it was.** The server asked it
+  whether the cab was parked up and how bent it was.
+- **`Config.Fares.offerTimeout` was multiplied by six** and used as the deadline
+  to reach the pickup, while its comment said it governed accepting an offer.
+  It is `pickupTimeout`, in seconds, and means what it says.
+- **The night bonus ran on two clocks** — the host machine's wall clock on the
+  server, the in-game hour on the dash. It is decided once when the fare is
+  built and sent down with it.
+- **A cab would sometimes not start.** The server asked for the entity the
+  instant its net id arrived, before it had replicated, and gave up silently.
+- **A cab could be left in the bay forever.** Deleting an entity you do not own
+  does nothing, and another player standing near it was enough.
+- **The uniform never came back after a respawn.** The event existed; nothing
+  fired it.
+- **`/taxi` did nothing at all when an admin paused dispatch** — no message, no
+  error.
+- The meter's status dot never lit, the Rep button in the admin panel could
+  never work (`prompt()` is inert in CEF), Record and Board rendered as
+  unstyled browser tables, the cab roster had no layout rule at all, and every
+  fare popup after a sign-off was titled "Shift over".
+
 ## 1.2.0
 
 The 1.1.0 work never shipped. This is that, plus what was wrong with it.
