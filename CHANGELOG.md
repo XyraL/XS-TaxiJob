@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.1
+
+### Fixed
+
+- Cabs come with keys on servers running qb-vehiclekeys
+- The shift summary can be closed again. Escape closes the summary first, then the terminal
+- The meter says when the roof lamp is off, instead of always saying it is on
+- People flagging you down use the proper taxi hail
+
+### Added
+
+- `Config.Depot.requiredJob`: only players with that job can sign on, for servers that hire drivers at City Hall
+- Passengers shut the cab doors behind them
+
 ## 1.3.0
 
 Flag-downs, and the interface rebuilt around them.
