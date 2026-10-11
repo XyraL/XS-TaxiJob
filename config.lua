@@ -11,7 +11,7 @@ Config.Bridges = {
     -- Cabs spawn unlocked, but most servers run a keys system that blocks the
     -- engine until a vehicle is handed over. 'auto' finds the one you run.
     --   'qbx'            -> qbx_vehiclekeys (applied server-side)
-    --   'qb-vehiclekeys' -> vehiclekeys:client:SetOwner
+    --   'qb-vehiclekeys' -> exports['qb-vehiclekeys']:GiveKeys (applied server-side)
     --   'qs-vehiclekeys' -> exports['qs-vehiclekeys']:GiveKeys(plate)
     --   'custom'         -> exports['XS-TaxiJob']:OnGiveKeys(vehicle, plate)
     --   'none'           -> no keys system on this server
@@ -74,6 +74,10 @@ Config.Depot.key = ''
 
 -- How far from the depot counts as being at it, for the command above.
 Config.Depot.useRange = 25.0
+
+-- Only players with this job can sign on, for example 'taxi' when drivers are
+-- hired at City Hall. false lets anyone drive.
+Config.Depot.requiredJob = false
 
 -- Cab spawn and return slots. A free slot is picked on rental; returning
 -- means parking within Config.Vehicles.returnDistance of any of them.

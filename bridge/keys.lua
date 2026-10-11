@@ -11,36 +11,42 @@ end
 
 Keys.name = detect()
 
+function Keys.Trim(plate)
+    return (tostring(plate or ''):gsub('^%s+', ''):gsub('%s+$', ''))
+end
+
 -- Cabs spawn unlocked with hotwiring disabled, but most servers run a separate
 -- keys system that blocks the engine until a vehicle is handed to a player.
 -- Every call is wrapped so a wrong or missing export never hard-errors the job;
 -- turn Config.Debug on to see the real error if a cab still will not start.
 if IsDuplicityVersion() then
-    -- qbx_vehiclekeys' GiveKeys export is server-side and needs the server's
-    -- own resolved handle, so that one option is handled here rather than on
-    -- the client with everything else.
-    function Keys.GiveServer(src, vehicle)
-        if Keys.name ~= 'qbx' then return end
+    function Keys.GiveServer(src, vehicle, plate)
+        if Keys.name ~= 'qbx' and Keys.name ~= 'qb-vehiclekeys' then return end
 
         local ok, err = pcall(function()
-            exports.qbx_vehiclekeys:GiveKeys(src, vehicle, false)
+            if Keys.name == 'qbx' then
+                exports.qbx_vehiclekeys:GiveKeys(src, vehicle, false)
+                return
+            end
+
+            plate = Keys.Trim(plate or GetVehicleNumberPlateText(vehicle))
+            local given = pcall(function() exports['qb-vehiclekeys']:GiveKeys(src, plate) end)
+            if not given then TriggerClientEvent('vehiclekeys:client:SetOwner', src, plate) end
         end)
 
         if not ok and Config.Debug then
-            print(('^1[XS-TaxiJob]^0 qbx_vehiclekeys GiveKeys failed: %s'):format(tostring(err)))
+            print(('^1[XS-TaxiJob]^0 %s GiveKeys failed: %s'):format(Keys.name, tostring(err)))
         end
     end
 else
     function Keys.Give(vehicle)
-        if Keys.name == 'none' or Keys.name == 'qbx' then return end
+        if Keys.name == 'none' or Keys.name == 'qbx' or Keys.name == 'qb-vehiclekeys' then return end
         if not DoesEntityExist(vehicle) then return end
 
-        local plate = GetVehicleNumberPlateText(vehicle)
+        local plate = Keys.Trim(GetVehicleNumberPlateText(vehicle))
         local ok, err = true, nil
 
-        if Keys.name == 'qb-vehiclekeys' then
-            ok, err = pcall(function() TriggerEvent('vehiclekeys:client:SetOwner', plate) end)
-        elseif Keys.name == 'qs-vehiclekeys' then
+        if Keys.name == 'qs-vehiclekeys' then
             ok, err = pcall(function() exports['qs-vehiclekeys']:GiveKeys(plate) end)
         elseif Keys.name == 'custom' then
             ok, err = pcall(function() exports['XS-TaxiJob']:OnGiveKeys(vehicle, plate) end)

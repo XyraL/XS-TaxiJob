@@ -41,12 +41,24 @@ end
 function CloseTerminal()
     if not Taxi.uiOpen then return end
     Taxi.uiOpen = false
-    SetNuiFocus(false, false)
+    if not Taxi.summaryOpen then SetNuiFocus(false, false) end
     SendNUIMessage({ action = 'close' })
 end
 
 RegisterNUICallback('close', function(_, cb)
     CloseTerminal()
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('summaryShown', function(_, cb)
+    Taxi.summaryOpen = true
+    SetNuiFocus(true, true)
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('summaryClosed', function(_, cb)
+    Taxi.summaryOpen = false
+    if not Taxi.uiOpen then SetNuiFocus(false, false) end
     cb({ ok = true })
 end)
 

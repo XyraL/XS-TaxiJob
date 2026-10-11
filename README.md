@@ -172,6 +172,9 @@ reputation ladder, and every pickup and drop-off point.
 The pickup list ships with real Los Santos locations. Add your own by appending
 to `Config.Fares.points` with an `area` and a `tier`.
 
+To make driving a job players have to be hired for, set
+`Config.Depot.requiredJob` to that job, for example `'taxi'`.
+
 ## Integrations
 
 Optional and auto-detected. Nothing here is required, and the job runs on its

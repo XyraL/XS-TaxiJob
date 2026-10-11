@@ -173,6 +173,7 @@ function StartMeterLoop()
                     away = distanceToTarget(),
                     totals = Taxi.totals,
                     vehicle = Taxi.vehicle and Taxi.vehicle.label or nil,
+                    lamp = Taxi.lamp == true,
                 },
             })
 

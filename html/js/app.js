@@ -112,14 +112,25 @@ document.querySelectorAll('.tab').forEach((tab) => {
     });
 });
 
-document.addEventListener('keyup', (event) => {
-    if (event.key === 'Escape' && !terminal.classList.contains('hidden')) closeTerminal();
-});
-
 /* ------------------------------------------------------------- summary */
 
 const summary = document.getElementById('summary');
-document.getElementById('summary-close').addEventListener('click', () => summary.classList.add('hidden'));
+let shiftSummaryOpen = false;
+
+function closeShiftSummary() {
+    summary.classList.add('hidden');
+    if (!shiftSummaryOpen) return;
+    shiftSummaryOpen = false;
+    window.post('summaryClosed');
+}
+
+document.getElementById('summary-close').addEventListener('click', closeShiftSummary);
+
+document.addEventListener('keyup', (event) => {
+    if (event.key !== 'Escape') return;
+    if (shiftSummaryOpen) closeShiftSummary();
+    else if (!terminal.classList.contains('hidden')) closeTerminal();
+});
 
 function showSummary(result) {
     // Set on both paths. showShiftSummary changes it and nothing changed it
@@ -146,7 +157,7 @@ function showSummary(result) {
         <div class="r total"><span>Paid</span><span>${window.fmt.money((result.fare || 0) + (result.tip || 0))}</span></div>`;
 
     summary.classList.remove('hidden');
-    setTimeout(() => summary.classList.add('hidden'), 6000);
+    setTimeout(() => { if (!shiftSummaryOpen) summary.classList.add('hidden'); }, 6000);
 }
 
 window.showShiftSummary = (shift) => {
@@ -170,6 +181,8 @@ window.showShiftSummary = (shift) => {
         <div class="r total"><span>Earned</span><span>${window.fmt.money(shift.earned || 0)}</span></div>`;
 
     summary.classList.remove('hidden');
+    shiftSummaryOpen = true;
+    window.post('summaryShown');
 };
 
 /* -------------------------------------------------------------- bridge */

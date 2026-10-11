@@ -102,6 +102,10 @@ lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
     if not citizenid then return { ok = false, error = 'No character loaded.' } end
     if Drivers[src] then return { ok = false, error = 'You are already signed on.' } end
 
+    if Config.Depot.requiredJob and Framework.GetJobName(src) ~= Config.Depot.requiredJob then
+        return { ok = false, error = 'Only hired cab drivers can sign on.' }
+    end
+
     local entry = vehicleByModel(model)
     if not entry then return { ok = false, error = 'That cab is not on the roster.' } end
 
@@ -139,6 +143,7 @@ lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
             label = entry.label,
             rate = entry.rate,
             plate = entry.plate,
+            assignedPlate = ('%s%04d'):format((entry.plate or 'TAXI'):sub(1, 4), math.random(0, 9999)),
             netId = nil,
         },
     }
@@ -188,7 +193,7 @@ RegisterNetEvent('XS-TaxiJob:server:registerCab', function(netId)
         return
     end
 
-    Keys.GiveServer(src, vehicle)
+    Keys.GiveServer(src, vehicle, driver.vehicle.assignedPlate)
 end)
 
 lib.callback.register('XS-TaxiJob:server:endShift', function(src, data)

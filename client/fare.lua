@@ -159,10 +159,25 @@ local function boardPassenger(fare)
     return false
 end
 
+local function shutDoorsAfter(ped, cab)
+    CreateThread(function()
+        local timeout = GetGameTimer() + 5000
+        while GetGameTimer() < timeout and DoesEntityExist(ped) and DoesEntityExist(cab) and IsPedInVehicle(ped, cab, false) do
+            Wait(100)
+        end
+        Wait(750)
+        if not DoesEntityExist(cab) then return end
+        for door = 0, 3 do
+            if GetVehicleDoorAngleRatio(cab, door) > 0.01 then SetVehicleDoorShut(cab, door, false) end
+        end
+    end)
+end
+
 local function dropOff(fare)
     if fare.passengerPed and DoesEntityExist(fare.passengerPed) then
         TaskLeaveVehicle(fare.passengerPed, Taxi.cab, 0)
         SetPedKeepTask(fare.passengerPed, true)
+        shutDoorsAfter(fare.passengerPed, Taxi.cab)
     end
 
     local result = lib.callback.await('XS-TaxiJob:server:completeFare', false, {

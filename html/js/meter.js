@@ -126,7 +126,7 @@ window.Meter = (() => {
             cap.textContent = 'Shift';
             distance.textContent = `${t.fares || 0} fares`;
             time.textContent = window.fmt.distance(t.distance || 0);
-            route.innerHTML = 'Lamp on. Anyone can flag you down.';
+            route.textContent = data.lamp ? 'Lamp on. Anyone can flag you down.' : 'Lamp off. Nobody will flag you down.';
             totals.textContent = '';
             tariff.hidden = true;
             return 's-hire';

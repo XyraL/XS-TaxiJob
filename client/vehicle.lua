@@ -29,7 +29,7 @@ function SpawnCab(vehicle, spawn)
 
     if not DoesEntityExist(cab) then return false end
 
-    SetVehicleNumberPlateText(cab, plateFor(vehicle.plate))
+    SetVehicleNumberPlateText(cab, vehicle.assignedPlate or plateFor(vehicle.plate))
     SetVehicleOnGroundProperly(cab)
     SetEntityAsMissionEntity(cab, true, true)
     SetVehicleEngineOn(cab, true, true, false)

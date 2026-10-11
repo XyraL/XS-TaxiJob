@@ -90,7 +90,13 @@ local function offer(ped)
     SetEntityAsMissionEntity(ped, true, true)
     ClearPedTasks(ped)
     TaskTurnPedToFaceEntity(ped, Taxi.cab, 2000)
-    TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT', 0, true)
+
+    if pcall(lib.requestAnimDict, 'taxi_hail', 1500) then
+        TaskPlayAnim(ped, 'taxi_hail', 'hail_taxi', 8.0, -8.0, -1, 1, 0, false, false, false)
+        RemoveAnimDict('taxi_hail')
+    else
+        TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT', 0, true)
+    end
 
     Framework.Notify(('Someone is flagging you down. Pull over, or %s to wave them off.')
         :format('/' .. Config.Flagdown.command), 'inform')
