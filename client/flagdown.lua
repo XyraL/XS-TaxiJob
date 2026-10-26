@@ -1,27 +1,18 @@
---[[ Getting flagged down.
-
-     The job's other two sources of work are both something you ask for: a
-     button in the terminal, or a player typing /taxi. This one arrives through
-     the windscreen. With the roof lamp on, people on the pavement put a hand
-     out as you drive past, and you either pull over or you do not.
-
-     Which pedestrian is chosen here, because only this end can see them. The
-     SERVER owns everything that matters: whether the claim is granted, where
-     they are going, what the trip is worth and every cooldown. Nothing below
-     is trusted with a number.
-
-     The lamp is also the off switch for all of it. A driver heading back to
-     the depot at the end of a shift wants to stop being stopped. ]]
-
 local candidate = nil
+local candidateBlip = nil
 local offeredAt = 0
 local lastFlagAt = 0
 
+local function removeBlip()
+    if candidateBlip and DoesBlipExist(candidateBlip) then RemoveBlip(candidateBlip) end
+    candidateBlip = nil
+end
+
 local function clearCandidate()
+    removeBlip()
+
     if candidate and DoesEntityExist(candidate) then
         ClearPedTasks(candidate)
-        -- Released, never deleted. It was somebody the world put there and it
-        -- goes back to being the world's.
         SetPedAsNoLongerNeeded(candidate)
     end
 
@@ -33,18 +24,26 @@ function FlagdownClear()
     clearCandidate()
 end
 
--- Somebody worth stopping for: on foot, not in a car, not already busy being
--- something else, and stood on the side of the road rather than in it.
 local function usable(ped)
     if not ped or ped == 0 or not DoesEntityExist(ped) then return false end
     if ped == PlayerPedId() then return false end
     if IsPedAPlayer(ped) then return false end
     if not IsPedHuman(ped) then return false end
+    if IsEntityAMissionEntity(ped) then return false end
     if IsPedInAnyVehicle(ped, true) then return false end
     if IsPedDeadOrDying(ped, true) or IsPedInjured(ped) then return false end
     if IsPedInCombat(ped, PlayerPedId()) or IsPedRagdoll(ped) then return false end
+    if IsPedFleeing(ped) or IsPedSwimming(ped) then return false end
+    if GetInteriorFromEntity(ped) ~= 0 then return false end
 
     return true
+end
+
+local function atTheKerb(at)
+    if IsPointOnRoad(at.x, at.y, at.z, 0) then return false end
+
+    local found, node = GetClosestVehicleNode(at.x, at.y, at.z, 1, 3.0, 0)
+    return found and node ~= nil and #(vec3(node.x, node.y, node.z) - at) <= 14.0
 end
 
 local function look()
@@ -52,16 +51,29 @@ local function look()
     if not cab or not DoesEntityExist(cab) then return nil end
 
     local here = GetEntityCoords(cab)
-    local best, bestAway
+    local forward = GetEntityForwardVector(cab)
+    local best, bestScore
 
-    -- GetGamePool is the supported way to walk what is loaded. There is no
-    -- ped enumerator in the native set.
     for _, ped in ipairs(GetGamePool('CPed')) do
         if usable(ped) then
-            local away = #(here - GetEntityCoords(ped))
+            local at = GetEntityCoords(ped)
+            local away = #(here - at)
 
-            if away <= Config.Flagdown.range and (not bestAway or away < bestAway) then
-                best, bestAway = ped, away
+            if away >= 10.0 and away <= Config.Flagdown.range and math.abs(at.z - here.z) <= 3.5 then
+                local dx, dy = at.x - here.x, at.y - here.y
+                local flat = math.sqrt(dx * dx + dy * dy)
+                local ahead = flat > 0 and (forward.x * dx + forward.y * dy) / flat or -1.0
+
+                if ahead >= 0.35
+                    and IsEntityOnScreen(ped)
+                    and HasEntityClearLosToEntity(cab, ped, 17)
+                    and atTheKerb(at) then
+                    local score = away * (1.6 - ahead)
+
+                    if not bestScore or score < bestScore then
+                        best, bestScore = ped, score
+                    end
+                end
             end
         end
     end
@@ -69,12 +81,34 @@ local function look()
     return best
 end
 
---[[ The offer.
+local function sideOf(ped)
+    local offset = GetOffsetFromEntityGivenWorldCoords(Taxi.cab, GetEntityCoords(ped))
+    return offset.x >= 0.0 and 'right' or 'left'
+end
 
-     The server is asked first, because two cabs can drive past the same person
-     and only one of them can have them. The claim is by position rather than
-     by entity: an ambient ped is a different handle on every machine, so a
-     handle is meaningless to anybody but the client that read it. ]]
+local function markCandidate(ped)
+    removeBlip()
+
+    candidateBlip = AddBlipForEntity(ped)
+    SetBlipSprite(candidateBlip, 280)
+    SetBlipColour(candidateBlip, 5)
+    SetBlipScale(candidateBlip, 0.9)
+    SetBlipFlashes(candidateBlip, true)
+    SetBlipAsShortRange(candidateBlip, false)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName('Flagging you down')
+    EndTextCommandSetBlipName(candidateBlip)
+
+    CreateThread(function()
+        while candidate == ped and DoesEntityExist(ped) do
+            local at = GetEntityCoords(ped)
+            DrawMarker(2, at.x, at.y, at.z + 1.25, 0.0, 0.0, 0.0, 180.0, 0.0, 0.0,
+                0.32, 0.32, 0.32, 255, 196, 0, 210, true, true, 2, false, nil, nil, false)
+            Wait(0)
+        end
+    end)
+end
+
 local function offer(ped)
     local at = GetEntityCoords(ped)
 
@@ -83,6 +117,7 @@ local function offer(ped)
     })
 
     if not claimed or not claimed.ok then return false end
+    if not DoesEntityExist(ped) then return false end
 
     candidate = ped
     offeredAt = GetGameTimer()
@@ -98,14 +133,14 @@ local function offer(ped)
         TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT', 0, true)
     end
 
-    Framework.Notify(('Someone is flagging you down. Pull over, or %s to wave them off.')
-        :format('/' .. Config.Flagdown.command), 'inform')
+    markCandidate(ped)
+
+    Framework.Notify(('Someone ahead on your %s is flagging you down. Pull over next to them, or %s to wave them off.')
+        :format(sideOf(ped), '/' .. Config.Flagdown.command), 'inform')
 
     return true
 end
 
--- Pulling over is the accept. There is no prompt and no key: you either stop
--- for them or you drive on, which is what the gesture means.
 local function takeIt(ped)
     local at = GetEntityCoords(ped)
 
@@ -119,10 +154,10 @@ local function takeIt(ped)
         return
     end
 
-    -- The person already stood there IS the passenger. Nothing is spawned.
     local fare = result.fare
     fare.passengerPed = ped
 
+    removeBlip()
     candidate = nil
     offeredAt = 0
     lastFlagAt = GetGameTimer()
@@ -137,14 +172,12 @@ function SetLamp(on)
 
     if not Taxi.lamp then clearCandidate() end
 
-    -- Only the taxi model has a sign on the roof. On the other cabs the lamp
-    -- is a state the job keeps rather than a bulb, which is worth knowing
-    -- before somebody files it as broken.
-    if Taxi.cab and DoesEntityExist(Taxi.cab) and Taxi.vehicle and Taxi.vehicle.model == 'taxi' then
+    if Taxi.cab and DoesEntityExist(Taxi.cab) and GetEntityModel(Taxi.cab) == `taxi` then
         SetTaxiLights(Taxi.cab, Taxi.lamp)
     end
 
     Framework.Notify(Taxi.lamp and 'Lamp on. Anyone can flag you down.' or 'Lamp off.', 'inform')
+    SendNUIMessage({ action = 'lamp', data = { on = Taxi.lamp } })
 end
 
 CreateThread(function()
@@ -162,15 +195,13 @@ CreateThread(function()
             elseif candidate then
                 local away = #(GetEntityCoords(cab) - GetEntityCoords(candidate))
 
-                -- Stopped beside them is the accept.
                 if speed < 2.0 and away <= Config.Flagdown.stopDistance then
                     takeIt(candidate)
                 elseif away > Config.Flagdown.range * 1.6
                     or GetGameTimer() - offeredAt > Config.Flagdown.offerSeconds * 1000 then
-                    -- Driven past, or stood there long enough.
                     clearCandidate()
                 end
-            elseif speed > 2.0
+            elseif speed > 2.0 and InCab()
                 and GetGameTimer() - lastFlagAt > Config.Flagdown.cooldown * 1000
                 and math.random(100) <= Config.Flagdown.chance then
                 local found = look()

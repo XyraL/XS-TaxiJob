@@ -38,7 +38,9 @@ for (const file of jsFiles) {
     // XS.post scan — and an endpoint nothing appears to post to reads as dead
     // code somebody then deletes.
     // This resource posts through window.post(), not XS.post().
-    for (const m of src.matchAll(/(?:window\.)?post\(\s*['"]([^'"]+)['"]/g)) {
+    // The tablet posts through act(), which toasts the error, and the phone
+    // app page through call(). Both are post() with the name first.
+    for (const m of src.matchAll(/(?:window\.)?(?:post|act|call)\(\s*['"]([^'"]+)['"]/g)) {
         if (!posted.has(m[1])) posted.set(m[1], file);
     }
 
@@ -95,7 +97,7 @@ if (existsSync(mockPath)) {
         problems.push('mock.js does not guard on GetParentResourceName — it will replace fetch in game');
     }
 
-    if (!mock.includes('toLowerCase()')) {
+    if (/location\.hostname/.test(mock) && !mock.includes('toLowerCase()')) {
         problems.push('mock.js hostname guard does not fold case — a capitalised resource name defeats it');
     }
 }

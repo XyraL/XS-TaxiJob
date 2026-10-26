@@ -27,19 +27,6 @@ function block(name) {
         .filter((entry) => !entry.startsWith('@'));
 }
 
-const listed = new Set([
-    ...block('shared_scripts'),
-    ...block('client_scripts'),
-    ...block('server_scripts'),
-    ...block('files'),
-]);
-
-for (const entry of listed) {
-    if (!existsSync(path.join(ROOT, entry))) {
-        problems.push(`manifest lists a file that is not on disk: ${entry}`);
-    }
-}
-
 function walk(dir) {
     const out = [];
 
@@ -50,6 +37,32 @@ function walk(dir) {
     }
 
     return out;
+}
+
+// files{} takes globs like 'html/js/*.js'. Each one stands for the files it
+// matches today; a glob that matches nothing is as wrong as a missing file.
+function expand(entry) {
+    if (!entry.includes('*')) return [entry];
+    const base = entry.slice(0, entry.indexOf('*')).replace(/\/[^/]*$/, '');
+    if (!existsSync(path.join(ROOT, base))) return [];
+    const re = new RegExp('^' + entry.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '.*') + '$');
+    return walk(base).filter((file) => re.test(file));
+}
+
+const listed = new Set();
+
+for (const entry of [...block('shared_scripts'), ...block('client_scripts'), ...block('server_scripts'), ...block('files')]) {
+    const matches = expand(entry);
+    if (entry.includes('*') && matches.length === 0) {
+        problems.push(`manifest glob matches nothing: ${entry}`);
+    }
+    for (const file of matches) listed.add(file);
+}
+
+for (const entry of listed) {
+    if (!existsSync(path.join(ROOT, entry))) {
+        problems.push(`manifest lists a file that is not on disk: ${entry}`);
+    }
 }
 
 const scripts = new Set([

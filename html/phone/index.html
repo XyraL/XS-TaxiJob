@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taxi</title>
+<style>
+:root{--bg:#0d0d10;--card:#17171c;--line:#26262e;--text:#f1f1f3;--dim:#9a9aa4;--faint:#63636c;--amber:#f5b229;--ink:#1a1305;--red:#ff5a66;--green:#3ddc97}
+[data-theme="light"]{--bg:#f3f3f6;--card:#ffffff;--line:#e2e2e8;--text:#15151a;--dim:#5d5d68;--faint:#9a9aa4}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font:400 1rem/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;user-select:none}
+.app{display:flex;flex-direction:column;gap:1rem;min-height:100%;padding:3.25rem 1.1rem 1.5rem}
+.top{display:flex;align-items:center;gap:.7rem}
+.logo{display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:.8rem;background:var(--amber);color:var(--ink)}
+.logo svg{width:1.5rem;height:1.5rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top h1{font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+.top p{font-size:.8rem;color:var(--dim)}
+.card{display:flex;flex-direction:column;gap:.75rem;padding:1.2rem;border:1px solid var(--line);border-radius:1.1rem;background:var(--card)}
+.state{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.state.wait{color:var(--dim)}
+.big{font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+.sub{font-size:.9rem;color:var(--dim)}
+.row{display:flex;justify-content:space-between;gap:.75rem;padding:.55rem 0;border-top:1px solid var(--line);font-size:.92rem}
+.row span:first-child{color:var(--faint)}
+.btn{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;height:3.2rem;border:0;border-radius:.9rem;background:var(--amber);color:var(--ink);font:700 1.05rem/1 inherit;cursor:pointer}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.5}
+.btn.ghost{background:transparent;color:var(--red);border:1px solid color-mix(in srgb,var(--red) 40%,transparent)}
+.pulse{width:.65rem;height:.65rem;border-radius:50%;background:var(--amber);box-shadow:0 0 0 0 color-mix(in srgb,var(--amber) 60%,transparent);animation:p 1.4s infinite}
+@keyframes p{70%{box-shadow:0 0 0 .7rem transparent}100%{box-shadow:0 0 0 0 transparent}}
+.line{display:flex;align-items:center;gap:.6rem}
+.err{min-height:1.2rem;font-size:.85rem;color:var(--red);text-align:center}
+.foot{margin-top:auto;font-size:.78rem;color:var(--faint);text-align:center}
+</style>
+</head>
+<body>
+<div class="app">
+    <div class="top">
+        <div class="logo"><svg viewBox="0 0 24 24"><path d="M4 17h16v-3l-2-5H6l-2 5zM7 9l1-3h8l1 3M9 4h6v2H9zM7 17v2M17 17v2"/></svg></div>
+        <div><h1 data-title>Taxi</h1><p>A cab to wherever you are</p></div>
+    </div>
+    <div class="card" data-card></div>
+    <div class="err" data-err></div>
+    <div class="foot">You pay the meter when the ride ends.</div>
+</div>
+<script>
+(() => {
+    const host = location.hostname || '';
+    const query = new URLSearchParams(location.search).get('res');
+    const res = (typeof GetParentResourceName === 'function' && GetParentResourceName())
+        || query
+        || (typeof window.resourceName === 'string' && window.resourceName)
+        || (host.startsWith('cfx-nui-') ? host.slice(8) : 'XS-TaxiJob');
+
+    const card = document.querySelector('[data-card]');
+    const err = document.querySelector('[data-err]');
+    let status = { state: 'none' };
+    let busy = false;
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function call(name) {
+        return fetch(`https://${res}/${name}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+            .then((r) => r.json())
+            .catch(() => ({ ok: false, error: 'Dispatch did not answer.' }));
+    }
+
+    function render() {
+        const s = status || { state: 'none' };
+        if (s.state === 'waiting') {
+            card.innerHTML = `
+                <span class="state wait">Finding a driver</span>
+                <div class="line"><span class="pulse"></span><span class="big">Calling cabs</span></div>
+                <span class="sub">Sent to ${s.drivers || 0} driver${s.drivers === 1 ? '' : 's'}. Stay where you are.</span>
+                <button class="btn ghost" data-cancel>Cancel</button>`;
+        } else if (s.state === 'accepted') {
+            card.innerHTML = `
+                <span class="state">Driver on the way</span>
+                <span class="big">${esc(s.driver || 'Your driver')}</span>
+                ${s.vehicle ? `<div class="row"><span>Car</span><span>${esc(s.vehicle)}</span></div>` : ''}
+                ${s.plate ? `<div class="row"><span>Plate</span><span>${esc(s.plate)}</span></div>` : ''}
+                <button class="btn ghost" data-cancel>Cancel</button>`;
+        } else if (s.state === 'riding') {
+            card.innerHTML = `
+                <span class="state">On your way</span>
+                <span class="big">${esc(s.driver || 'Your driver')}</span>
+                <span class="sub">Tell your driver where you are going.</span>`;
+        } else {
+            const free = Number(s.drivers || 0);
+            card.innerHTML = `
+                <span class="state ${free ? '' : 'wait'}">${free ? `${free} cab${free === 1 ? '' : 's'} free` : 'No cabs free right now'}</span>
+                <span class="big">Need a ride?</span>
+                <span class="sub">A driver comes to where you are standing.</span>
+                <button class="btn" data-call ${free ? '' : 'disabled'}>Call a cab</button>`;
+        }
+
+        const go = card.querySelector('[data-call]');
+        if (go) go.onclick = async () => {
+            if (busy) return;
+            busy = true;
+            go.disabled = true;
+            err.textContent = '';
+            const result = await call('phoneRequest');
+            busy = false;
+            if (!result || result.ok === false) err.textContent = (result && result.error) || 'That did not work.';
+            refresh();
+        };
+
+        const cancel = card.querySelector('[data-cancel]');
+        if (cancel) cancel.onclick = async () => {
+            cancel.disabled = true;
+            const result = await call('phoneCancel');
+            if (!result || result.ok === false) err.textContent = (result && result.error) || 'That did not work.';
+            refresh();
+        };
+    }
+
+    async function refresh() {
+        const next = await call('phoneStatus');
+        if (next && next.state) {
+            status = next;
+            render();
+        }
+    }
+
+    window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (data === 'componentsLoaded' || data === 'app-opened' || data === 'phone-load') refresh();
+        else if (data && data.type === 'status' && data.status) {
+            status = data.status;
+            render();
+        }
+    });
+
+    render();
+    refresh();
+    setInterval(() => { if (document.visibilityState !== 'hidden') refresh(); }, 2500);
+})();
+</script>
+</body>
+</html>

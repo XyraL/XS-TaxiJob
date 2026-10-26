@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.0.0
+
+A new driver tablet, depots you build in game, own cars and phone support.
+
+**Updating:** replace the whole folder, config.lua included. Drivers, reputation and fare history stay.
+
+### Added
+
+- New driver tablet. Press F6 or type `/cab` to open it
+- Build your own depots in game: dispatcher, cab bays, blip, which cabs and which job
+- Let drivers use a car they own at the depots you pick
+- Change pay in game: meter rates, tips, the deposit, and each cab's and tier's rate
+- Call a cab from XS-Phone, lb-phone, qs-smartphone, gksphone, yseries, okokPhone or npwd
+- Drivers get call alerts on their phone
+- Drivers can pass on a call, and passengers can cancel with `/canceltaxi`
+- Bring a cab back to any depot for your deposit
+- Away from a depot, `/cab` sets your GPS to the nearest one
+- Cabs leave the depot full on 16 fuel scripts
+- Keys for Renewed-Vehiclekeys, wasabi_carlock, mk_vehiclekeys, jaksam's vehicles_keys, cd_garage and okokGarage
+- Exports to call a cab from other scripts
+
+### Fixed
+
+- Someone flagging you down now shows on your map with a marker over them, and you're told which side they're on
+- Only people you can see, at the road ahead, flag you down
+- You get your deposit back if the cab fails to spawn
+- The meter shows what the passenger pays, multipliers included
+- Ride alerts reach XS-Phone
+
 ## 1.3.1
 
 ### Fixed

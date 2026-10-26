@@ -1,4 +1,5 @@
 Drivers = {}
+TaxiSchemaReady = false
 
 local slotsInUse = {}
 local seenCitizenIds = {}
@@ -10,15 +11,20 @@ local function vehicleByModel(model)
     return nil
 end
 
-local function freeSlot()
-    for index, coords in ipairs(Config.Depot.cabSpawns) do
-        if not slotsInUse[index] then return index, coords end
+local function slotKey(locationId, index)
+    return ('%d:%d'):format(locationId, index)
+end
+
+local function freeBay(location)
+    for index, bay in ipairs(location.data.bays) do
+        local key = slotKey(location.id, index)
+        if not slotsInUse[key] then return key, bay end
     end
     return nil
 end
 
-local function releaseSlot(index)
-    if index then slotsInUse[index] = nil end
+local function releaseSlot(key)
+    if key then slotsInUse[key] = nil end
 end
 
 function IsOnDuty(src)
@@ -30,8 +36,6 @@ function DriverOf(src)
     return Drivers[src]
 end
 
--- Called from every path that ends a shift so the registry, the slot and the
--- database row are always cleaned up together.
 local function closeShift(src, reason)
     local driver = Drivers[src]
     if not driver then return end
@@ -43,6 +47,59 @@ local function closeShift(src, reason)
     Stats.EndShift(driver.shiftId, driver.totals)
     releaseSlot(driver.slot)
     Drivers[src] = nil
+
+    if Rides then Rides.DriverGone(src) end
+end
+
+local function safeName(value)
+    return type(value) == 'string' and value:match('^[%w_]+$') and value or nil
+end
+
+local function ownsVehicle(citizenid, plate)
+    local cfg = Config.PersonalVehicles or {}
+    local tbl = safeName(cfg.table or 'player_vehicles')
+    local owner = safeName(cfg.ownerColumn or 'citizenid')
+    local plateColumn = safeName(cfg.plateColumn or 'plate')
+    if not tbl or not owner or not plateColumn then return false end
+
+    local ok, found = pcall(MySQL.scalar.await,
+        ('SELECT 1 FROM `%s` WHERE `%s` = ? AND TRIM(`%s`) = ? LIMIT 1'):format(tbl, owner, plateColumn),
+        { citizenid, plate })
+
+    if not ok then
+        print(('^3[XS-TaxiJob]^0 could not check car ownership in %s: %s'):format(tbl, tostring(found)))
+        return false
+    end
+
+    return found ~= nil
+end
+
+local function jobAllowed(src, location)
+    local job = Locations.Job(location)
+    return not job or Framework.GetJobName(src) == job
+end
+
+local function where(src)
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 then return nil end
+    return GetEntityCoords(ped)
+end
+
+local function publicFare(fare)
+    if not fare then return nil end
+    return {
+        id = fare.id,
+        kind = fare.kind,
+        stage = fare.boardedAt and 'riding' or 'toPickup',
+        pickup = fare.pickup,
+        dropoff = fare.dropoff,
+        openEnded = fare.openEnded == true,
+        night = fare.night == true,
+        crossTown = fare.crossTown == true,
+        passenger = fare.passengerName,
+        extra = fare.extra,
+        rates = fare.rates,
+    }
 end
 
 lib.callback.register('XS-TaxiJob:server:getState', function(src)
@@ -54,6 +111,10 @@ lib.callback.register('XS-TaxiJob:server:getState', function(src)
     local summary = Stats.Summary(citizenid)
     if not summary then return nil end
 
+    local driver = Drivers[src]
+    local here = where(src)
+    local at = here and Locations.Near(here, Config.Depot.useRange + 5.0) or nil
+
     local vehicles = {}
     for _, entry in ipairs(Config.Vehicles.list) do
         vehicles[#vehicles + 1] = {
@@ -62,66 +123,145 @@ lib.callback.register('XS-TaxiJob:server:getState', function(src)
             tier = entry.tier,
             rate = entry.rate,
             locked = summary.tier < entry.tier,
+            offered = at == nil or Locations.AllowsCab(at, entry.model),
         }
     end
 
-    local driver = Drivers[src]
-
     return {
+        name = Framework.GetName(src),
         onDuty = driver ~= nil and driver.onDuty or false,
         vehicle = driver and driver.vehicle or nil,
+        location = driver and driver.location or nil,
         totals = driver and driver.totals or { fares = 0, earned = 0, distance = 0 },
+        startedAt = driver and driver.startedAt or nil,
+        now = os.time(),
         hasFare = driver ~= nil and driver.fare ~= nil,
-        -- A hailed ride has no destination, so it is the driver who says when
-        -- it is over. The panel needs to know to offer that.
+        fare = driver and publicFare(driver.fare) or nil,
         openEnded = driver ~= nil and driver.fare ~= nil and driver.fare.openEnded == true,
-        deposit = Config.Vehicles.deposit,
+        deposit = (driver and driver.vehicle and driver.vehicle.deposit) or Config.Vehicles.deposit,
         stats = summary,
+        tiers = Config.Reputation.tiers,
         vehicles = vehicles,
-        recent = Stats.Recent(citizenid, 10),
+        recent = Stats.Recent(citizenid, 12),
         leaderboard = Stats.Leaderboard(10),
-        -- Both the config gate and the live switch in the admin panel.
-        -- Reading only the config meant unticking the switch changed nothing
-        -- the drivers could see.
         hailEnabled = Config.Hail.enabled and (not Admin or Admin.settings.hailEnabled ~= false),
-
-        -- Sent from here so every path agrees. It used to be attached on the
-        -- client, in the getState callback only, which the terminal's own
-        -- open message does not go through — so the Admin tab was hidden
-        -- every time the terminal was opened.
         isAdmin = Admin ~= nil and Admin.IsAdmin(src) or false,
-
-        -- The roof lamp. Off means nobody flags the cab down, which is how a
-        -- driver heading back at the end of a shift stops being stopped.
         lamp = driver ~= nil and driver.lamp ~= false,
+        locations = Locations.Public(),
+        at = at and at.id or nil,
+        atName = at and at.name or nil,
+        personalAllowed = at ~= nil and at.data.personal == true,
+        jobOk = at == nil or jobAllowed(src, at),
+        rides = Rides and Rides.OffersFor(src) or {},
+        flagdown = Config.Flagdown.enabled,
     }
 end)
 
-lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
+local function startPersonal(src, citizenid, location, data, summary)
+    if not location.data.personal then
+        return { ok = false, error = 'This depot only rents cabs.' }
+    end
+
+    local ped = GetPlayerPed(src)
+    local netId = tonumber(data.netId)
+    local vehicle = netId and NetworkGetEntityFromNetworkId(netId) or 0
+
+    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then
+        return { ok = false, error = 'Get in your car first.' }
+    end
+
+    if GetPedInVehicleSeat(vehicle, -1) ~= ped then
+        return { ok = false, error = 'You need to be in the driver seat.' }
+    end
+
+    if GetVehicleType(vehicle) ~= 'automobile' then
+        return { ok = false, error = 'That cannot take passengers.' }
+    end
+
+    local plate = Keys.Trim(GetVehicleNumberPlateText(vehicle))
+    if plate == '' or not ownsVehicle(citizenid, plate) then
+        return { ok = false, error = 'That car is not registered to you.' }
+    end
+
+    local label = tostring(data.label or ''):gsub('[%c<>]', ''):sub(1, 32)
+    if label == '' then label = 'Own car' end
+
+    Drivers[src] = {
+        citizenid = citizenid,
+        onDuty = true,
+        location = location.id,
+        slot = nil,
+        shiftId = Stats.StartShift(citizenid, 'personal'),
+        startedAt = os.time(),
+        totals = { fares = 0, earned = 0, distance = 0 },
+        fare = nil,
+        lamp = Config.Flagdown.lampOnAtSignOn,
+        vehicle = {
+            model = 'personal',
+            label = label,
+            rate = (Config.PersonalVehicles and Config.PersonalVehicles.rate) or 1.0,
+            plate = plate,
+            assignedPlate = plate,
+            personal = true,
+            netId = netId,
+        },
+    }
+
+    return {
+        ok = true,
+        personal = true,
+        vehicle = Drivers[src].vehicle,
+        deposit = 0,
+        stats = summary,
+    }
+end
+
+lib.callback.register('XS-TaxiJob:server:startShift', function(src, data)
+    if type(data) ~= 'table' then data = { model = data } end
+
     local citizenid = Framework.GetCitizenId(src)
     if not citizenid then return { ok = false, error = 'No character loaded.' } end
     if Drivers[src] then return { ok = false, error = 'You are already signed on.' } end
 
-    if Config.Depot.requiredJob and Framework.GetJobName(src) ~= Config.Depot.requiredJob then
-        return { ok = false, error = 'Only hired cab drivers can sign on.' }
+    local here = where(src)
+    local location = Locations.Get(data.location)
+    if not location and here then location = Locations.Near(here, Config.Depot.useRange + 5.0) end
+    if not location then return { ok = false, error = 'Sign on at a taxi depot.' } end
+
+    if not here or #(here - Locations.Desk(location)) > Config.Depot.useRange + 10.0 then
+        return { ok = false, error = ('Sign on at %s.'):format(location.name) }
     end
 
-    local entry = vehicleByModel(model)
-    if not entry then return { ok = false, error = 'That cab is not on the roster.' } end
+    if not jobAllowed(src, location) then
+        return { ok = false, error = 'Only hired cab drivers can sign on here.' }
+    end
 
     local summary = Stats.Summary(citizenid)
+
+    if data.personal then
+        return startPersonal(src, citizenid, location, data, summary)
+    end
+
+    local entry = vehicleByModel(data.model)
+    if not entry then return { ok = false, error = 'That cab is not on the roster.' } end
+
+    if not Locations.AllowsCab(location, entry.model) then
+        return { ok = false, error = ('%s does not rent the %s.'):format(location.name, entry.label) }
+    end
+
     if summary.tier < entry.tier then
         return { ok = false, error = ('The %s needs tier %d. You are tier %d.'):format(entry.label, entry.tier, summary.tier) }
     end
 
-    if Framework.GetMoney(src, Config.Meter.account) < Config.Vehicles.deposit then
-        return { ok = false, error = ('You need %s for the deposit.'):format(Text.money(Config.Vehicles.deposit)) }
+    local deposit = Config.Vehicles.deposit
+    if Framework.GetMoney(src, Config.Meter.account) < deposit then
+        return { ok = false, error = ('You need %s for the deposit.'):format(Text.money(deposit)) }
     end
 
-    local slot, coords = freeSlot()
-    if not slot then return { ok = false, error = 'Every cab bay is occupied. Try again shortly.' } end
+    local slot, bay = freeBay(location)
+    if not slot then return { ok = false, error = 'Every cab bay here is taken. Try again shortly.' } end
 
-    if not Framework.RemoveMoney(src, Config.Meter.account, Config.Vehicles.deposit, 'XS-TaxiJob:deposit') then
+    if deposit > 0 and not Framework.RemoveMoney(src, Config.Meter.account, deposit, 'XS-TaxiJob:deposit') then
         return { ok = false, error = 'Could not take the deposit.' }
     end
 
@@ -130,13 +270,12 @@ lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
     Drivers[src] = {
         citizenid = citizenid,
         onDuty = true,
+        location = location.id,
         slot = slot,
         shiftId = Stats.StartShift(citizenid, entry.model),
         startedAt = os.time(),
         totals = { fares = 0, earned = 0, distance = 0 },
         fare = nil,
-        -- Set here as well as by the client's own call, so a driver is never
-        -- briefly lamp-unknown between signing on and the event landing.
         lamp = Config.Flagdown.lampOnAtSignOn,
         vehicle = {
             model = entry.model,
@@ -145,20 +284,19 @@ lib.callback.register('XS-TaxiJob:server:startShift', function(src, model)
             plate = entry.plate,
             assignedPlate = ('%s%04d'):format((entry.plate or 'TAXI'):sub(1, 4), math.random(0, 9999)),
             netId = nil,
+            deposit = deposit,
         },
     }
 
     return {
         ok = true,
-        spawn = { x = coords.x, y = coords.y, z = coords.z, w = coords.w },
+        spawn = { x = bay.x, y = bay.y, z = bay.z, w = bay.w },
         vehicle = Drivers[src].vehicle,
-        deposit = Config.Vehicles.deposit,
+        deposit = deposit,
         stats = summary,
     }
 end)
 
--- The lamp lives on the driver so the server can skip lamp-off drivers when
--- it hands work out, whichever way the work arrived.
 RegisterNetEvent('XS-TaxiJob:server:setLamp', function(on)
     local driver = Drivers[source]
     if driver then driver.lamp = on == true end
@@ -167,16 +305,9 @@ end)
 RegisterNetEvent('XS-TaxiJob:server:registerCab', function(netId)
     local src = source
     local driver = Drivers[src]
-    if not driver or type(netId) ~= 'number' then return end
+    if not driver or driver.vehicle.personal or type(netId) ~= 'number' then return end
     driver.vehicle.netId = netId
 
-    --[[ The cab is spawned on the client, so the entity does not exist on this
-         side the instant its net id arrives. Asking once and giving up is why
-         the driver sometimes ends up sat in a cab that will not start, with
-         nothing in the console — it worked or it did not depending on how busy
-         the server was that tick.
-
-         Half a second of asking, then a word about it rather than silence. ]]
     local vehicle
 
     for _ = 1, 50 do
@@ -196,40 +327,40 @@ RegisterNetEvent('XS-TaxiJob:server:registerCab', function(netId)
     Keys.GiveServer(src, vehicle, driver.vehicle.assignedPlate)
 end)
 
-lib.callback.register('XS-TaxiJob:server:endShift', function(src, data)
+local function atAnyBay(coords)
+    for _, location in ipairs(Locations.list) do
+        for _, bay in ipairs(location.data.bays) do
+            if #(coords - vec3(bay.x, bay.y, bay.z)) <= Config.Vehicles.returnDistance then return true end
+        end
+    end
+    return false
+end
+
+lib.callback.register('XS-TaxiJob:server:endShift', function(src)
     local driver = Drivers[src]
     if not driver then return { ok = false, error = 'You are not signed on.' } end
 
-    -- Worked out here, from the cab. The client used to be asked whether it
-    -- parked up and how bent the cab was, which is the one question it has a
-    -- reason to lie about: answer "yes, and it is mint" and the deposit and
-    -- the damage fee both stop existing.
+    local personal = driver.vehicle and driver.vehicle.personal == true
     local returned = false
     local bodyHealth = 1000.0
 
-    local netId = driver.vehicle and driver.vehicle.netId
-    local cab = netId and NetworkGetEntityFromNetworkId(netId)
+    if not personal then
+        local netId = driver.vehicle and driver.vehicle.netId
+        local cab = netId and NetworkGetEntityFromNetworkId(netId)
 
-    if cab and cab ~= 0 and DoesEntityExist(cab) then
-        bodyHealth = GetVehicleBodyHealth(cab)
-
-        local here = GetEntityCoords(cab)
-
-        for _, slot in ipairs(Config.Depot.cabSpawns) do
-            if #(here - vec3(slot.x, slot.y, slot.z)) <= Config.Vehicles.returnDistance then
-                returned = true
-                break
-            end
+        if cab and cab ~= 0 and DoesEntityExist(cab) then
+            bodyHealth = GetVehicleBodyHealth(cab)
+            returned = atAnyBay(GetEntityCoords(cab))
         end
     end
 
-    local refund = 0
-    local fee = 0
+    local refund, fee = 0, 0
 
     if returned then
         local damage = math.max(0.0, math.min(1.0, (1000.0 - bodyHealth) / 1000.0))
-        fee = math.floor(Config.Vehicles.deposit * damage * Config.Vehicles.damageFeeRate)
-        refund = math.max(0, Config.Vehicles.deposit - fee)
+        local paid = driver.vehicle.deposit or Config.Vehicles.deposit
+        fee = math.min(paid, math.floor(paid * damage * Config.Vehicles.damageFeeRate))
+        refund = math.max(0, paid - fee)
         if refund > 0 then
             Framework.AddMoney(src, Config.Meter.account, refund, 'XS-TaxiJob:depositRefund')
         end
@@ -243,6 +374,8 @@ lib.callback.register('XS-TaxiJob:server:endShift', function(src, data)
         refund = refund,
         damageFee = fee,
         abandoned = driver.fare ~= nil,
+        personal = personal,
+        returned = returned,
     }
 
     closeShift(src, driver.fare and 'abandoned' or 'clean')
@@ -251,14 +384,33 @@ lib.callback.register('XS-TaxiJob:server:endShift', function(src, data)
     return { ok = true, summary = summary }
 end)
 
+lib.callback.register('XS-TaxiJob:server:abortShift', function(src)
+    local driver = Drivers[src]
+    if not driver then return { ok = false } end
+    if driver.vehicle.personal or driver.vehicle.netId or driver.fare then return { ok = false } end
+    if os.time() - driver.startedAt > 60 then return { ok = false } end
+
+    local paid = driver.vehicle.deposit or Config.Vehicles.deposit
+    if paid > 0 then Framework.AddMoney(src, Config.Meter.account, paid, 'XS-TaxiJob:depositRefund') end
+    closeShift(src, 'clean')
+    return { ok = true }
+end)
+
+lib.callback.register('XS-TaxiJob:server:nearestDepot', function(src)
+    local here = where(src)
+    if not here then return nil end
+    local location = Locations.Nearest(here)
+    if not location then return nil end
+    local desk = location.data.desk
+    return { id = location.id, name = location.name, x = desk.x, y = desk.y, z = desk.z }
+end)
+
 AddEventHandler('playerDropped', function()
     local src = source
     local citizenid = Drivers[src] and Drivers[src].citizenid or seenCitizenIds[src]
 
     if Drivers[src] then closeShift(src, 'dropped') end
 
-    -- Every terminal visit loads a stats row into the cache. Without this the
-    -- cache only ever grows over a long uptime.
     if citizenid then Stats.Forget(citizenid) end
     seenCitizenIds[src] = nil
 end)
@@ -273,8 +425,13 @@ end)
 
 CreateThread(function()
     local file = LoadResourceFile(GetCurrentResourceName(), 'sql/install.sql')
-    if not file then return end
-    for statement in file:gmatch('[^;]+') do
-        if statement:match('%S') then MySQL.query.await(statement) end
+    if file then
+        for statement in file:gmatch('[^;]+') do
+            if statement:match('%S') then
+                local ok, err = pcall(MySQL.query.await, statement)
+                if not ok then print(('^1[XS-TaxiJob]^0 could not create a table: %s'):format(tostring(err))) end
+            end
+        end
     end
+    TaxiSchemaReady = true
 end)

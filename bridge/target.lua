@@ -105,12 +105,14 @@ end
 
 if Target.name == 'builtin' then
     CreateThread(function()
+        local shown = nil
+
         while true do
             local wait = 900
-            local ped = PlayerPedId()
-            local here = GetEntityCoords(ped)
+            local here = GetEntityCoords(PlayerPedId())
+            local active, activeAway
 
-            for _, entry in pairs(builtinZones) do
+            for id, entry in pairs(builtinZones) do
                 local point = vec3(entry.zone.coords.x, entry.zone.coords.y, entry.zone.coords.z)
                 local away = #(here - point)
 
@@ -119,16 +121,25 @@ if Target.name == 'builtin' then
                     DrawMarker(21, point.x, point.y, point.z + 0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                         0.28, 0.28, 0.28, 240, 200, 40, 120, false, true, 2, nil, nil, false)
 
-                    if away < (entry.zone.distance or 2.0) then
-                        lib.showTextUI(('[E] %s'):format(entry.zone.label))
-                        if IsControlJustReleased(0, 38) then
-                            lib.hideTextUI()
-                            entry.onSelect()
-                        end
-                    else
-                        lib.hideTextUI()
+                    if away < (entry.zone.distance or 2.0) and (not activeAway or away < activeAway) then
+                        active, activeAway = id, away
                     end
                 end
+            end
+
+            if active ~= shown then
+                if active then
+                    lib.showTextUI(('[E] %s'):format(builtinZones[active].zone.label))
+                else
+                    lib.hideTextUI()
+                end
+                shown = active
+            end
+
+            if active and IsControlJustReleased(0, 38) then
+                lib.hideTextUI()
+                shown = nil
+                builtinZones[active].onSelect()
             end
 
             Wait(wait)

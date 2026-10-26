@@ -5,45 +5,43 @@
 <title>XS-TaxiJob</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/dock.css">
+<link rel="stylesheet" href="css/tablet.css">
 </head>
 <body>
-
-<div id="terminal" class="hidden">
-    <div class="panel shell">
-        <nav class="rail">
-            <div class="rail-brand">
-                <span class="lamp"></span>
-                <h1>Downtown Cab Co.</h1>
-                <p id="driver-line">Driver terminal</p>
-            </div>
-
-            <button class="tab rail-item active" data-tab="shift">
-                <span class="n">Shift</span>
-                <span class="pill on" id="rail-duty" hidden>On</span>
-            </button>
-            <button class="tab rail-item" data-tab="vehicles"><span class="n">Cabs</span></button>
-            <button class="tab rail-item" data-tab="stats"><span class="n">Record</span></button>
-            <button class="tab rail-item" data-tab="leaderboard"><span class="n">Board</span></button>
-            <button class="tab rail-item admin-tab hidden" data-tab="admin"><span class="n">Admin</span></button>
-        </nav>
-
-        <div class="screen">
-            <div class="screen-head">
-                <span class="screen-title" id="screen-title">Shift</span>
-                <button id="close" type="button" class="ghost">Close</button>
-            </div>
-            <main id="panel"></main>
+<div id="tablet" class="hidden">
+    <div class="tb-dim"></div>
+    <div class="tb-stage">
+        <div class="tb-win">
+            <aside class="tb-rail">
+                <div class="tb-logo">
+                    <div class="tb-hex"><svg viewBox="0 0 24 24"><path d="M4 17h16v-3l-2-5H6l-2 5zM7 9l1-3h8l1 3M9 4h6v2H9z"/></svg></div>
+                    <div style="min-width:0">
+                        <div class="tb-brand" data-brand>Taxi</div>
+                        <div class="tb-brand-sub">Driver tablet</div>
+                    </div>
+                </div>
+                <nav class="tb-nav"></nav>
+                <div class="tb-clock"><b data-clock>00:00</b><span data-clock-sub>Off shift</span></div>
+                <div class="tb-me">
+                    <div class="tb-av" data-me-av>DR</div>
+                    <div class="tb-me-info"><b data-me-name>Driver</b><span data-me-sub></span></div>
+                    <span class="tb-dot off" data-me-dot></span>
+                </div>
+                <div class="tb-close" data-close><svg class="tb-i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg> Close</div>
+            </aside>
+            <main class="tb-main">
+                <div class="tb-ph"></div>
+                <div class="tb-body"></div>
+                <div class="tb-toastbox"></div>
+            </main>
         </div>
     </div>
 </div>
-
-<!-- One corner, one order: calls, then the receipt, then the meter. -->
 <div id="dock">
-
     <div id="hails"></div>
-
     <div id="summary" class="hidden">
         <div class="summary-card">
             <h2>Fare complete</h2>
@@ -51,10 +49,6 @@
             <button id="summary-close" type="button">Clear</button>
         </div>
     </div>
-
-    <!-- A fixed-size unit. It never resizes between states: a box in the
-         corner of your eye that grows and shrinks while you drive is what
-         makes a HUD read as a web page rather than as equipment. -->
     <div id="meter" class="hidden">
         <div class="mtr-head">
             <span class="dot"></span>
@@ -65,7 +59,6 @@
                 <span id="meter-vehicle"></span>
             </span>
         </div>
-
         <div class="mtr-read" id="meter-well">
             <div class="mtr-big" id="meter-amount">$0</div>
             <div class="mtr-cap" id="meter-cap">Shift</div>
@@ -74,22 +67,17 @@
                 <b id="meter-time">0:00</b>
             </div>
         </div>
-
         <div class="mtr-route">
             <span class="mtr-to" id="meter-route"></span>
             <span class="mtr-eta" id="meter-totals"></span>
         </div>
     </div>
-
 </div>
-
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/mock.js"></script>
 <script src="js/app.js"></script>
 <script src="js/meter.js"></script>
-<script src="js/panels/shift.js"></script>
-<script src="js/panels/vehicles.js"></script>
-<script src="js/panels/stats.js"></script>
-<script src="js/panels/leaderboard.js"></script>
-<script src="js/panels/admin.js"></script>
-
+<script src="js/map.js"></script>
+<script src="js/tablet.js"></script>
 </body>
 </html>

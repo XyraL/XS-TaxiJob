@@ -1,5 +1,3 @@
-window.Panels = {};
-
 window.fmt = {
     money(amount) {
         const value = Math.round(Number(amount) || 0);
@@ -30,92 +28,23 @@ window.fmt = {
     },
 };
 
-window.post = (name, data = {}) =>
-    fetch(`https://${GetParentResourceName()}/${name}`, {
+window.resourceName = typeof GetParentResourceName === 'function' ? GetParentResourceName() : 'XS-TaxiJob';
+
+window.post = window.post || ((name, data = {}) =>
+    fetch(`https://${window.resourceName}/${name}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     })
         .then((r) => r.json())
-        .catch(() => ({ ok: false, error: 'The resource did not answer.' }));
+        .catch(() => ({ ok: false, error: 'The script did not answer.' })));
 
-const terminal = document.getElementById('terminal');
-const panelHost = document.getElementById('panel');
-const driverLine = document.getElementById('driver-line');
-
-let state = null;
-let activeTab = 'shift';
-
-const TITLES = {
-    shift: 'Shift',
-    vehicles: 'Cabs',
-    stats: 'Record',
-    leaderboard: 'Board',
-    admin: 'Admin',
-};
-
-function renderPanel() {
-    const title = document.getElementById('screen-title');
-    if (title) title.textContent = TITLES[activeTab] || 'Shift';
-
-    const panel = window.Panels[activeTab];
-    panelHost.innerHTML = panel && state ? panel.render(state) : '<div class="empty">Nothing to show.</div>';
-    if (panel && panel.wire && state) panel.wire(panelHost, state);
-}
-
-function setState(next) {
-    if (!next) return;
-    state = next;
-    window.__state = state;
-
-    const adminTab = document.querySelector('.tab.admin-tab');
-    if (adminTab) adminTab.classList.toggle('hidden', state.isAdmin !== true);
-
-    // The rail's Shift item carries the live state a row of tabs could not.
-    const duty = document.getElementById('rail-duty');
-    if (duty) duty.hidden = state.onDuty !== true;
-
-    const stats = state.stats || {};
-    driverLine.textContent = state.onDuty
-        ? `On duty - ${state.vehicle ? state.vehicle.label : 'cab out'}`
-        : `${stats.tierLabel || 'Trainee'} - ${stats.reputation || 0} rep`;
-
-    renderPanel();
-}
-
-// Panels ask for a refresh after anything that changes the driver's standing,
-// so the tiles and the cab roster never drift from the server.
-window.refresh = async () => {
-    const next = await window.post('getState');
-    if (next) setState(next);
-};
-
-window.openTerminal = (next) => {
-    document.body.classList.add('terminal-open');
-    setState(next);
-    terminal.classList.remove('hidden');
-};
-
-function closeTerminal() {
-    terminal.classList.add('hidden');
-    document.body.classList.remove('terminal-open');
-    window.post('close');
-}
-
-document.getElementById('close').addEventListener('click', closeTerminal);
-
-document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-        activeTab = tab.dataset.tab;
-        document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
-        renderPanel();
-    });
-});
-
-/* ------------------------------------------------------------- summary */
+window.keys = { tablet: '/cab' };
 
 const summary = document.getElementById('summary');
 let shiftSummaryOpen = false;
+
+window.summaryIsOpen = () => shiftSummaryOpen;
 
 function closeShiftSummary() {
     summary.classList.add('hidden');
@@ -127,33 +56,27 @@ function closeShiftSummary() {
 document.getElementById('summary-close').addEventListener('click', closeShiftSummary);
 
 document.addEventListener('keyup', (event) => {
-    if (event.key !== 'Escape') return;
-    if (shiftSummaryOpen) closeShiftSummary();
-    else if (!terminal.classList.contains('hidden')) closeTerminal();
+    if (event.key === 'Escape' && shiftSummaryOpen) closeShiftSummary();
 });
 
-function showSummary(result) {
-    // Set on both paths. showShiftSummary changes it and nothing changed it
-    // back, so the next fare you completed was headed "Shift over".
-    document.querySelector('#summary h2').textContent = 'Fare complete';
+function rowsHtml(rows) {
+    return rows.map(([label, value]) => `<div class="r"><span>${label}</span><span>${value}</span></div>`).join('');
+}
 
-    // A fare finishing docks above the meter. Throwing a card over the middle
-    // of the screen with a button on it, while the driver is moving, was the
-    // wrong moment for a modal.
+function showFareReceipt(result) {
+    document.querySelector('#summary h2').textContent = 'Fare complete';
     summary.classList.add('dock');
     summary.classList.remove('full');
 
     if (window.Meter && window.Meter.showPaid) window.Meter.showPaid(result || {});
 
-    const rows = [
-        ['Fare', window.fmt.money(result.fare)],
-        ['Tip', window.fmt.money(result.tip)],
-        ['Rating', window.fmt.stars(result.rating)],
-        ['Reputation', `+${result.reputation || 0}`],
-    ];
-
     document.getElementById('summary-rows').innerHTML = `
-        ${rows.map(([label, value]) => `<div class="r"><span>${label}</span><span>${value}</span></div>`).join('')}
+        ${rowsHtml([
+            ['Fare', window.fmt.money(result.fare)],
+            ['Tip', window.fmt.money(result.tip)],
+            ['Rating', window.fmt.stars(result.rating)],
+            ['Reputation', `+${result.reputation || 0}`],
+        ])}
         <div class="r total"><span>Paid</span><span>${window.fmt.money((result.fare || 0) + (result.tip || 0))}</span></div>`;
 
     summary.classList.remove('hidden');
@@ -165,19 +88,17 @@ window.showShiftSummary = (shift) => {
         ['Fares', shift.fares || 0],
         ['Time on shift', `${shift.minutes || 0} min`],
         ['Driven', window.fmt.distance(shift.distance || 0)],
-        ['Deposit back', window.fmt.money(shift.refund || 0)],
     ];
 
+    if (!shift.personal) rows.push(['Deposit back', window.fmt.money(shift.refund || 0)]);
     if (shift.damageFee) rows.push(['Damage', `-${window.fmt.money(shift.damageFee)}`]);
     if (shift.abandoned) rows.push(['Abandoned a fare', 'yes']);
 
-    // You have parked and it is the end of something, so this one still
-    // gets the whole screen.
     summary.classList.remove('dock');
     summary.classList.add('full');
     document.querySelector('#summary h2').textContent = 'Shift over';
     document.getElementById('summary-rows').innerHTML = `
-        ${rows.map(([label, value]) => `<div class="r"><span>${label}</span><span>${value}</span></div>`).join('')}
+        ${rowsHtml(rows)}
         <div class="r total"><span>Earned</span><span>${window.fmt.money(shift.earned || 0)}</span></div>`;
 
     summary.classList.remove('hidden');
@@ -185,31 +106,48 @@ window.showShiftSummary = (shift) => {
     window.post('summaryShown');
 };
 
-/* -------------------------------------------------------------- bridge */
-
 window.addEventListener('message', (event) => {
     const message = event.data || {};
 
     switch (message.action) {
         case 'open':
-            window.openTerminal(message.state);
+            if (message.state && message.state.keys) window.keys = message.state.keys;
+            window.Tablet.show(message.state || {});
             break;
         case 'close':
-            terminal.classList.add('hidden');
-            document.body.classList.remove('terminal-open');
+            if (window.Tablet.isOpen()) window.Tablet.hide(true);
+            break;
+        case 'state':
+            window.Tablet.setState(message.state);
             break;
         case 'meter':
             window.Meter.update(message.data);
+            window.Tablet.meter(message.data);
             break;
         case 'fareComplete':
-            showSummary(message.data);
+            showFareReceipt(message.data || {});
             window.Meter.clearRoute();
+            window.Tablet.fareComplete(message.data);
             break;
-        case 'hailOffer':
+        case 'rideOffer':
             window.Meter.addHail(message.data);
+            window.Tablet.rideOffer(message.data);
             break;
-        case 'hailDismiss':
-            window.Meter.removeHail(message.data.id);
+        case 'rideGone':
+            window.Meter.removeHail(message.data && message.data.id);
+            window.Tablet.rideGone(message.data && message.data.id);
+            break;
+        case 'lamp':
+            window.Tablet.lamp(message.data && message.data.on);
+            break;
+        case 'locations':
+            window.Tablet.locations(message.data);
+            break;
+        case 'builder':
+            window.Tablet.builder(message.data);
+            break;
+        case 'me':
+            window.Tablet.me(message.data);
             break;
         default:
             break;

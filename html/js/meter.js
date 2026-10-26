@@ -239,12 +239,10 @@ window.Meter = (() => {
         node.className = 'hail';
         node.id = `hail-${offer.id}`;
 
-        // The card cannot be clicked — the page has no focus while you are
-        // driving — so the command is the instruction, not a fallback.
         node.innerHTML = `
             <b>${window.fmt.escape(offer.passenger || 'Someone')}</b>
-            <p>${window.fmt.distance(offer.distance || 0)} away &middot; ${window.fmt.escape(offer.label || 'Street pickup')}</p>
-            <span class="cmd">/accepthail ${offer.id}</span>
+            <p>${window.fmt.escape(offer.street || 'Street pickup')} &middot; ${window.fmt.distance(offer.distance || 0)} away</p>
+            <span class="cmd">${window.fmt.escape(offer.answerWith || '/cab')} to answer</span>
             <div class="timer"></div>`;
 
         hails.appendChild(node);

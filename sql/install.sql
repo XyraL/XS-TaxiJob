@@ -42,3 +42,17 @@ CREATE TABLE IF NOT EXISTS `xs_taxi_shifts` (
     PRIMARY KEY (`id`),
     KEY `driver` (`citizenid`, `id`)
 );
+
+CREATE TABLE IF NOT EXISTS `xs_taxi_locations` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `name`       VARCHAR(64)  NOT NULL,
+    `data`       LONGTEXT     NOT NULL,
+    `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+);
+
+CREATE TABLE IF NOT EXISTS `xs_taxi_settings` (
+    `name` VARCHAR(32) NOT NULL,
+    `data` LONGTEXT    NOT NULL,
+    PRIMARY KEY (`name`)
+);

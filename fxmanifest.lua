@@ -4,14 +4,9 @@ lua54 'yes'
 
 name 'XS-TaxiJob'
 author 'XyraL'
-description 'Civilian taxi job with a live meter, NPC and player fares, ride ratings and a reputation ladder. Standalone for QBox/QBCore.'
-version '1.3.1'
+description 'Civilian taxi job with a driver tablet, live meter, NPC and player fares, depots you build in game, and phone support. Standalone for QBox/QBCore.'
+version '2.0.0'
 
--- Works on QBox (qbx_core) OR QBCore (qb-core). The bridge auto-detects.
--- Target: ox_target / qb-target, or a built-in marker and key prompt when the
--- server runs neither. See Config.Bridges.
--- Phone: XS-Phone is used for hail notifications when present, and a plain
--- notification when it is not. Entirely optional.
 dependencies {
     'ox_lib',
     'oxmysql',
@@ -28,16 +23,18 @@ client_scripts {
     'bridge/target.lua',
     'bridge/phone.lua',
     'bridge/keys.lua',
+    'bridge/fuel.lua',
     'client/uniform.lua',
     'client/main.lua',
     'client/admin.lua',
-    'client/dispatcher.lua',
-    -- After main.lua: these read the shift/cab state it owns.
+    'client/locations.lua',
     'client/vehicle.lua',
     'client/meter.lua',
     'client/fare.lua',
-    'client/hail.lua',
+    'client/rides.lua',
     'client/flagdown.lua',
+    'client/builder.lua',
+    'client/phone.lua',
 }
 
 server_scripts {
@@ -46,23 +43,25 @@ server_scripts {
     'bridge/phone.lua',
     'bridge/keys.lua',
     'server/main.lua',
+    'server/locations.lua',
+    'server/rates.lua',
     'server/stats.lua',
     'server/fares.lua',
-    'server/hail.lua',
+    'server/rides.lua',
     'server/admin.lua',
     'server/commands.lua',
+    'server/phone.lua',
 }
 
 ui_page 'html/index.html'
 
 files {
     'html/index.html',
-    'html/css/style.css',
-    'html/js/app.js',
-    'html/js/meter.js',
-    'html/js/panels/shift.js',
-    'html/js/panels/vehicles.js',
-    'html/js/panels/stats.js',
-    'html/js/panels/leaderboard.js',
-    'html/js/panels/admin.js',
+    'html/css/*.css',
+    'html/js/*.js',
+    'html/vendor/leaflet/*.js',
+    'html/vendor/leaflet/*.css',
+    'html/assets/maps/tiles/*.webp',
+    'html/phone/index.html',
+    'html/phone/icon.png',
 }

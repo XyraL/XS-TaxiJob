@@ -68,25 +68,22 @@ local function settle(driver, fare, reported)
         distance = math.max(0.0, distance)
     end
 
-    local amount = Config.Meter.flagfall
-        + (distance / 1000.0) * Config.Meter.perKm
-        + (waiting / 60.0) * Config.Meter.perWaitingMinute
+    local r = fare.rates or Rates.ForFare(driver)
 
-    if fare.crossTown then amount = amount * Config.Fares.crossTownBonus end
+    local amount = r.flagfall
+        + (distance / 1000.0) * r.perKm
+        + (waiting / 60.0) * r.perWaitingMinute
+
+    if fare.crossTown then amount = amount * r.crossTown end
 
     -- Decided once, when the fare was built, and sent to the dash with it.
     -- Asking again here would also disagree with the meter on any ride that
     -- happens to cross the boundary.
-    if fare.night then amount = amount * Config.Meter.nightBonus.multiplier end
-    if fare.kind == 'player' then amount = amount * Config.Hail.playerFareMultiplier end
+    if fare.night then amount = amount * r.night end
 
-    amount = amount * (driver.vehicle.rate or 1.0)
+    amount = amount * r.cab * r.tier * (fare.extra or 1.0)
 
-    local summary = Stats.Summary(driver.citizenid)
-    amount = amount * (summary and summary.fareMultiplier or 1.0)
-    amount = amount * ((Admin and Admin.settings.fareMultiplier) or 1.0)
-
-    local total = math.max(Config.Meter.minimumFare, math.floor(amount + 0.5))
+    local total = math.max(r.minimumFare, math.floor(amount + 0.5))
     local tipRate = Config.Quality.tips[math.max(1, math.min(5, math.floor(rating + 0.5)))] or 0
     local tip = math.floor(total * tipRate + 0.5)
 
@@ -160,6 +157,9 @@ function BuildFare(driver, kind, override)
 
     nextFareId = nextFareId + 1
 
+    local extra = (kind == 'player' and Config.Hail.playerFareMultiplier or 1.0)
+        * ((Admin and Admin.settings.fareMultiplier) or 1.0)
+
     return {
         id = nextFareId,
         kind = kind or 'npc',
@@ -179,11 +179,14 @@ function BuildFare(driver, kind, override)
         snapPickup = (pickup.area == 'street' and not (override and override.pickup)) or nil,
         snapDropoff = dropoff.area == 'street' or nil,
         night = isNight(),
+        extra = extra,
+        rates = Rates.ForFare(driver),
         straightLine = #(pointVec(dropoff) - pointVec(pickup)),
         ped = Config.Fares.peds[math.random(#Config.Fares.peds)],
         offeredAt = os.time(),
         passengerSrc = override and override.passengerSrc or nil,
         passengerCitizenId = override and override.passengerCitizenId or nil,
+        passengerName = override and override.passengerName or nil,
     }
 end
 
@@ -302,10 +305,7 @@ RegisterNetEvent('XS-TaxiJob:server:fareBoarded', function(fareId)
     if not driver or not driver.fare or driver.fare.id ~= fareId then return end
 
     driver.fare.boardedAt = os.time()
-
-    if driver.fare.passengerSrc then
-        Phone.Notify(driver.fare.passengerSrc, 'Taxi', 'Your driver has picked you up.')
-    end
+    Rides.Boarded(driver.fare)
 end)
 
 lib.callback.register('XS-TaxiJob:server:completeFare', function(src, reported)
@@ -361,6 +361,7 @@ lib.callback.register('XS-TaxiJob:server:completeFare', function(src, reported)
     driver.totals.earned = driver.totals.earned + payout
     driver.totals.distance = driver.totals.distance + math.floor(settled.distance)
     driver.fare = nil
+    Rides.Finished(fare)
 
     return {
         ok = true,
@@ -386,9 +387,7 @@ lib.callback.register('XS-TaxiJob:server:cancelFare', function(src, reason)
         Stats.AddReputation(driver.citizenid, -Config.Reputation.cancelPenalty)
     end
 
-    if fare.passengerSrc then
-        Phone.Notify(fare.passengerSrc, 'Taxi', 'Your driver dropped the job. Try hailing another.')
-    end
+    Rides.Dropped(fare, 'Your driver dropped the job. Try calling another cab.')
 
     return { ok = true, stats = Stats.Summary(driver.citizenid) }
 end)

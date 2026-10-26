@@ -4,49 +4,88 @@ Taxi = {
     cab = nil,
     cabNetId = nil,
     vehicle = nil,
+    personal = false,
+    location = nil,
     fare = nil,
     stats = nil,
+    isAdmin = false,
     totals = { fares = 0, earned = 0, distance = 0 },
 }
 
-local depotBlip
-
-local function createDepotBlip()
-    local cfg = Config.Depot.blip
-    depotBlip = AddBlipForCoord(cfg.coords.x, cfg.coords.y, cfg.coords.z)
-    SetBlipSprite(depotBlip, cfg.sprite)
-    SetBlipColour(depotBlip, cfg.color)
-    SetBlipScale(depotBlip, cfg.scale)
-    SetBlipAsShortRange(depotBlip, true)
-    BeginTextCommandSetBlipName('STRING')
-    AddTextComponentSubstringPlayerName(cfg.label)
-    EndTextCommandSetBlipName(depotBlip)
+local function myPosition()
+    local ped = PlayerPedId()
+    local at = GetEntityCoords(ped)
+    return { x = at.x, y = at.y, z = at.z, h = GetEntityHeading(ped) }
 end
 
-function OpenTerminal()
+local function fetchState()
+    local state = lib.callback.await('XS-TaxiJob:server:getState', false)
+    if not state then return nil end
+
+    Taxi.isAdmin = state.isAdmin == true
+    Taxi.stats = state.stats or Taxi.stats
+
+    state.me = myPosition()
+    state.offers = RideOffers and RideOffers() or {}
+    state.builder = Builder and Builder.draft or nil
+    state.keys = {
+        tablet = Config.Depot.key ~= '' and Config.Depot.key or ('/' .. Config.Depot.command),
+        lamp = '/' .. Config.Flagdown.command,
+    }
+    local car, problem = PersonalCarCheck()
+    state.carReady = car ~= nil
+    state.carProblem = problem
+    return state
+end
+
+function OpenTablet(opts)
     if Taxi.uiOpen then return end
 
-    local state = lib.callback.await('XS-TaxiJob:server:getState', false)
+    local state = fetchState()
     if not state then
-        Framework.Notify('The depot system is not responding.', 'error')
+        Framework.Notify('The taxi system is not responding.', 'error')
         return
     end
 
-    Taxi.stats = state.stats
+    if not state.onDuty and not state.at and not state.isAdmin then
+        local depot = lib.callback.await('XS-TaxiJob:server:nearestDepot', false)
+        if depot then
+            SetNewWaypoint(depot.x + 0.0, depot.y + 0.0)
+            Framework.Notify(('Sign on at a taxi depot first. GPS set to %s.'):format(depot.name), 'inform')
+        else
+            Framework.Notify('Sign on at a taxi depot first.', 'error')
+        end
+        return
+    end
+
+    state.page = opts and opts.page or nil
     Taxi.uiOpen = true
     SetNuiFocus(true, true)
     SendNUIMessage({ action = 'open', state = state })
+
+    CreateThread(function()
+        while Taxi.uiOpen do
+            Wait(1000)
+            if Taxi.uiOpen then SendNUIMessage({ action = 'me', data = myPosition() }) end
+        end
+    end)
 end
 
-function CloseTerminal()
+function CloseTablet()
     if not Taxi.uiOpen then return end
     Taxi.uiOpen = false
     if not Taxi.summaryOpen then SetNuiFocus(false, false) end
     SendNUIMessage({ action = 'close' })
 end
 
+function RefreshTablet()
+    if not Taxi.uiOpen then return end
+    local state = fetchState()
+    if state then SendNUIMessage({ action = 'state', state = state }) end
+end
+
 RegisterNUICallback('close', function(_, cb)
-    CloseTerminal()
+    CloseTablet()
     cb({ ok = true })
 end)
 
@@ -63,7 +102,7 @@ RegisterNUICallback('summaryClosed', function(_, cb)
 end)
 
 RegisterNUICallback('getState', function(_, cb)
-    cb(lib.callback.await('XS-TaxiJob:server:getState', false))
+    cb(fetchState())
 end)
 
 RegisterNUICallback('setLamp', function(data, cb)
@@ -76,38 +115,90 @@ RegisterNUICallback('setLamp', function(data, cb)
     cb({ ok = true })
 end)
 
+RegisterNUICallback('gps', function(data, cb)
+    local x, y = tonumber(data and data.x), tonumber(data and data.y)
+    if not x or not y then
+        cb({ ok = false })
+        return
+    end
+    SetNewWaypoint(x + 0.0, y + 0.0)
+    cb({ ok = true })
+end)
+
+local function signedOn(result, location)
+    Taxi.onDuty = true
+    Taxi.location = location
+    Taxi.vehicle = result.vehicle
+    Taxi.personal = result.personal == true
+    Taxi.stats = result.stats
+    Taxi.totals = { fares = 0, earned = 0, distance = 0 }
+
+    Uniform.Apply()
+    SetLamp(Config.Flagdown.lampOnAtSignOn)
+    StartMeterLoop()
+end
+
 RegisterNUICallback('startShift', function(data, cb)
     if Taxi.onDuty then
         cb({ ok = false, error = 'You are already signed on.' })
         return
     end
 
-    local result = lib.callback.await('XS-TaxiJob:server:startShift', false, data and data.model)
+    data = type(data) == 'table' and data or {}
+    local location = tonumber(data.location)
+
+    if data.personal then
+        local vehicle, problem = PersonalCarCheck()
+        if not vehicle then
+            cb({ ok = false, error = problem })
+            return
+        end
+
+        local model = GetEntityModel(vehicle)
+        local label = GetLabelText(GetDisplayNameFromVehicleModel(model))
+        if not label or label == 'NULL' then label = GetDisplayNameFromVehicleModel(model) end
+
+        local result = lib.callback.await('XS-TaxiJob:server:startShift', false, {
+            location = location,
+            personal = true,
+            netId = NetworkGetNetworkIdFromEntity(vehicle),
+            label = label,
+        })
+
+        if not result or not result.ok then
+            cb(result or { ok = false, error = 'The depot refused that.' })
+            return
+        end
+
+        UsePersonalCar(vehicle)
+        signedOn(result, location)
+        CloseTablet()
+        Framework.Notify(('Signed on in your %s. Press %s for your tablet.'):format(result.vehicle.label,
+            Config.Depot.key ~= '' and Config.Depot.key or ('/' .. Config.Depot.command)), 'success')
+        cb({ ok = true })
+        return
+    end
+
+    local result = lib.callback.await('XS-TaxiJob:server:startShift', false, {
+        location = location,
+        model = data.model,
+    })
+
     if not result or not result.ok then
         cb(result or { ok = false, error = 'The depot refused that.' })
         return
     end
 
-    local spawned = SpawnCab(result.vehicle, result.spawn)
-    if not spawned then
-        -- Hand the shift straight back rather than leaving the driver signed on
-        -- with a deposit taken and no cab to show for it.
-        lib.callback.await('XS-TaxiJob:server:endShift', false, { returned = true, bodyHealth = 1000.0 })
-        cb({ ok = false, error = 'Could not get a cab onto the forecourt.' })
+    if not SpawnCab(result.vehicle, result.spawn) then
+        lib.callback.await('XS-TaxiJob:server:abortShift', false)
+        cb({ ok = false, error = 'Could not get a cab onto the forecourt. Your deposit was given back.' })
         return
     end
 
-    Taxi.onDuty = true
-    Uniform.Apply()
-    SetLamp(Config.Flagdown.lampOnAtSignOn)
-    Taxi.vehicle = result.vehicle
-    Taxi.stats = result.stats
-    Taxi.totals = { fares = 0, earned = 0, distance = 0 }
-
-    CloseTerminal()
-    StartMeterLoop()
-    Framework.Notify(('Signed on. %s deposit held.'):format(Text.money(result.deposit)), 'success')
-
+    signedOn(result, location)
+    CloseTablet()
+    Framework.Notify(('Signed on. %s deposit held. Press %s for your tablet.'):format(Text.money(result.deposit),
+        Config.Depot.key ~= '' and Config.Depot.key or ('/' .. Config.Depot.command)), 'success')
     cb({ ok = true })
 end)
 
@@ -126,59 +217,44 @@ end)
 function EndShift()
     if not Taxi.onDuty then return { ok = false, error = 'You are not signed on.' } end
 
-    local returned, bodyHealth = CabIsAtDepot()
-
-    local result = lib.callback.await('XS-TaxiJob:server:endShift', false, {
-        returned = returned,
-        bodyHealth = bodyHealth,
-    })
+    local result = lib.callback.await('XS-TaxiJob:server:endShift', false)
 
     if not result or not result.ok then
         return result or { ok = false, error = 'Could not end the shift.' }
     end
 
-    if returned then DespawnCab() end
+    local summary = result.summary or {}
+
+    if summary.personal then
+        ReleasePersonalCar()
+    elseif summary.returned then
+        DespawnCab()
+    end
 
     Taxi.onDuty = false
     Taxi.lamp = false
     Taxi.vehicle = nil
+    Taxi.personal = false
+    Taxi.location = nil
     Uniform.Remove()
-    Taxi.stats = result.summary.stats
+    Taxi.stats = summary.stats
     ClearFareState()
+    ClearRideOffers()
     StopMeterLoop()
 
-    if not returned then
-        Framework.Notify('Shift ended, but the cab was not returned. The deposit is gone.', 'error')
+    if not summary.personal and not summary.returned then
+        Framework.Notify('Shift ended, but the cab was not parked in a depot bay. The deposit is gone.', 'error')
     end
 
     return result
 end
 
---[[ Opening the terminal without walking back to the depot.
-
-     There was no way to do it from the driver's seat, which is where a driver
-     spends the whole shift — signing off meant driving back and getting out
-     to look at a screen about the cab you were sat in.
-
-     Away from the depot it is the DRIVER'S terminal, so it needs a shift. At
-     the depot it is the depot's and anyone can use it. ]]
 RegisterCommand(Config.Depot.command, function()
     if Taxi.uiOpen then
-        CloseTerminal()
+        CloseTablet()
         return
     end
-
-    if not Taxi.onDuty then
-        local here = GetEntityCoords(PlayerPedId())
-        local depot = Config.Depot.terminal.coords
-
-        if #(here - vec3(depot.x, depot.y, depot.z)) > Config.Depot.useRange then
-            Framework.Notify('Sign on at the depot first.', 'error')
-            return
-        end
-    end
-
-    OpenTerminal()
+    OpenTablet()
 end, false)
 
 RegisterCommand(Config.Flagdown.command, function()
@@ -191,19 +267,14 @@ RegisterCommand(Config.Flagdown.command, function()
 end, false)
 
 if Config.Flagdown.key ~= '' then
-    RegisterKeyMapping(Config.Flagdown.command, 'Toggle the roof lamp', 'keyboard', Config.Flagdown.key)
+    RegisterKeyMapping(Config.Flagdown.command, 'Taxi: toggle the roof lamp', 'keyboard', Config.Flagdown.key)
 end
 
-if Config.Depot.key ~= '' then
-    RegisterKeyMapping(Config.Depot.command, 'Open the cab terminal', 'keyboard', Config.Depot.key)
-end
+RegisterKeyMapping(Config.Depot.command, 'Taxi: open the driver tablet', 'keyboard', Config.Depot.key or '')
 
 RegisterNetEvent('XS-TaxiJob:client:forceEndShift', function()
     if not Taxi.onDuty then return end
 
-    -- Told them it ended whether it did or not. If the call failed the meter
-    -- kept running and the terminal still said on duty, with the two ends
-    -- disagreeing about whether there was a shift at all.
     local result = EndShift()
 
     if result and result.ok then
@@ -213,23 +284,9 @@ RegisterNetEvent('XS-TaxiJob:client:forceEndShift', function()
     end
 end)
 
-CreateThread(function()
-    createDepotBlip()
-
-    Target.addZone('xs_taxi_terminal', {
-        coords = Config.Depot.terminal.coords,
-        size = Config.Depot.terminal.size,
-        distance = Config.Depot.terminal.distance,
-        label = Config.Depot.terminal.label,
-    }, function()
-        OpenTerminal()
-    end)
-end)
-
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    if Taxi.uiOpen then SetNuiFocus(false, false) end
-    if depotBlip then RemoveBlip(depotBlip) end
-    DespawnCab()
+    if Taxi.uiOpen or Taxi.summaryOpen then SetNuiFocus(false, false) end
+    if not Taxi.personal then DespawnCab() end
     ClearFareState()
 end)

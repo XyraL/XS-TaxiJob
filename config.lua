@@ -6,86 +6,62 @@ Config.Debug = false
 Config.Bridges = {
     framework = 'auto',   -- auto | qbox | qbcore
     target    = 'auto',   -- auto | ox_target | qb-target | builtin
-    phone     = 'auto',   -- auto | XS-Phone | none
 
-    -- Cabs spawn unlocked, but most servers run a keys system that blocks the
-    -- engine until a vehicle is handed over. 'auto' finds the one you run.
-    --   'qbx'            -> qbx_vehiclekeys (applied server-side)
-    --   'qb-vehiclekeys' -> exports['qb-vehiclekeys']:GiveKeys (applied server-side)
-    --   'qs-vehiclekeys' -> exports['qs-vehiclekeys']:GiveKeys(plate)
-    --   'custom'         -> exports['XS-TaxiJob']:OnGiveKeys(vehicle, plate)
-    --   'none'           -> no keys system on this server
+    -- The phone players carry. 'auto' finds it. Works with XS-Phone, lb-phone,
+    -- qs-smartphone (V3 and PRO), npwd, gksphone, okokPhone, yseries,
+    -- high-phone, roadphone, 17mov_Phone and qb-phone. 'none' for no phone.
+    phone     = 'auto',
+
+    -- Cabs need keys on most servers. 'auto' finds yours: qbx_vehiclekeys,
+    -- Renewed-Vehiclekeys, wasabi_carlock, mk_vehiclekeys, jaksam's
+    -- vehicles_keys, qs-vehiclekeys, qb-vehiclekeys, cd_garage or okokGarage.
+    -- 'custom' calls exports['XS-TaxiJob']:OnGiveKeys(vehicle, plate). 'none' for no keys.
     keys      = 'auto',
+
+    -- Rented cabs start with a full tank. 'auto' finds your fuel script:
+    -- ox_fuel, LegacyFuel, cdn-fuel, ps-fuel, lc_fuel, Renewed-Fuel, okokGasStation,
+    -- qb-fuel, ti_fuel, BigDaddy-Fuel, x-fuel, rcore_fuel, qs-fuelstations, ND_Fuel and more.
+    fuel      = 'auto',
 }
 
 -- ─────────────────────────────────────────────────────────────
--- Depot
--- Where the job starts. The blip puts it on the map, the terminal is the
--- world prop players interact with, and the cab spawns are where rented
--- vehicles appear and must be returned.
+-- Depots
+-- Where drivers sign on. Admins add and edit depots in game: open the tablet
+-- and go to Depots. Each depot has its own blip, dispatcher and cab bays.
 -- ─────────────────────────────────────────────────────────────
 Config.Depot = {}
 
--- Downtown Cab Co. in Alta. Move this if your map uses a different building.
-Config.Depot.blip = {
-    coords = vec3(895.47, -178.92, 73.70),
-    sprite = 198,
-    color  = 5,
-    scale  = 0.75,
-    label  = 'Taxi Depot',
-}
+-- Opens the driver tablet. On shift it opens anywhere; off shift only at a
+-- depot. Admins can open it anywhere to build depots.
+Config.Depot.command = 'cab'
+Config.Depot.key = 'F6'
 
--- The terminal players interact with to sign on. A target zone is placed here;
--- with no target resource running, this becomes a marker and an E prompt.
-Config.Depot.terminal = {
-    coords   = vec4(895.47, -178.92, 73.70, 242.21),
-    size     = vec3(1.2, 1.2, 1.4),
-    distance = 2.0,
-    label    = 'Taxi terminal',
-}
+-- How close to a depot's dispatcher counts as being at the depot.
+Config.Depot.useRange = 25.0
 
--- The dispatcher. A person to talk to rather than a circle on the floor.
--- Switch this off, or run no target resource, and the terminal zone above is
--- used instead — an entity is not something the built-in marker fallback can
--- interact with.
+-- Only players with this job can sign on, for example 'taxi'. A depot can set
+-- its own job in game. false lets anyone drive.
+Config.Depot.requiredJob = false
+
+-- The person drivers talk to at a depot. New depots start with these.
 Config.Depot.dispatcher = {
-    enabled  = true,
-    model    = 'a_m_m_business_01',
-    coords   = vec4(895.47, -178.92, 73.70, 242.21),
-    scenario = 'WORLD_HUMAN_CLIPBOARD',
-    label    = 'Talk to the dispatcher',
-    distance = 2.0,
-
-    -- How close you have to get before the dispatcher is spawned. The ground
-    -- is only probed once the map around the depot has loaded, so spawning
-    -- from across the city would put them at the configured z instead.
+    model      = 'a_m_m_business_01',
+    scenario   = 'WORLD_HUMAN_CLIPBOARD',
     spawnRange = 120.0,
 }
 
--- Opens the terminal from wherever you are. At the depot anybody can use it;
--- away from it, only a driver already signed on — so the cab has a terminal in
--- it without the depot becoming something you can skip.
-Config.Depot.command = 'cab'
-
--- A key for the same thing. Left empty so it cannot fight another resource for
--- a binding; players set it themselves under Settings, Key Bindings, FiveM.
--- Put something like 'F6' here to ship a default.
-Config.Depot.key = ''
-
--- How far from the depot counts as being at it, for the command above.
-Config.Depot.useRange = 25.0
-
--- Only players with this job can sign on, for example 'taxi' when drivers are
--- hired at City Hall. false lets anyone drive.
-Config.Depot.requiredJob = false
-
--- Cab spawn and return slots. A free slot is picked on rental; returning
--- means parking within Config.Vehicles.returnDistance of any of them.
-Config.Depot.cabSpawns = {
-    vec4(908.57, -183.39, 72.75, 236.27),
-    vec4(906.94, -186.33, 72.61, 237.31),
-    vec4(905.22, -189.03, 72.43, 239.54),
-    vec4(903.63, -191.92, 72.39, 238.21),
+-- Your first depot. Only read once, to create it when there are no depots yet.
+-- After that, change it in game.
+Config.Depot.first = {
+    name = 'Downtown Cab Co.',
+    desk = vec4(895.47, -178.92, 73.70, 242.21),
+    blip = { sprite = 198, color = 5, scale = 0.75 },
+    bays = {
+        vec4(908.57, -183.39, 72.75, 236.27),
+        vec4(906.94, -186.33, 72.61, 237.31),
+        vec4(905.22, -189.03, 72.43, 239.54),
+        vec4(903.63, -191.92, 72.39, 238.21),
+    },
 }
 
 -- ─────────────────────────────────────────────────────────────
@@ -102,6 +78,15 @@ Config.Vehicles.returnDistance = 8.0
 -- Fraction of the deposit kept per point of body damage, capped at the
 -- whole deposit. 0 turns damage fees off entirely.
 Config.Vehicles.damageFeeRate = 0.6
+
+-- Drivers using their own car at a depot that allows it. It has to be a car
+-- registered to them in your vehicles table.
+Config.PersonalVehicles = {
+    rate        = 1.0,                -- multiplies the fare, like a cab's rate
+    table       = 'player_vehicles',
+    ownerColumn = 'citizenid',
+    plateColumn = 'plate',
+}
 
 Config.Vehicles.list = {
     {
@@ -343,10 +328,33 @@ Config.Hail = {}
 
 Config.Hail.enabled = true
 Config.Hail.command = 'taxi'
+Config.Hail.cancelCommand = 'canceltaxi'
+
+-- A key that answers the newest call without opening the tablet. Empty means
+-- answer from the tablet.
+Config.Hail.acceptKey = ''
 Config.Hail.offerTimeout = 45          -- seconds before the request expires
 Config.Hail.maxDistance = 3000.0       -- how far a driver can be and still be offered
 Config.Hail.cooldown = 120             -- seconds between requests from one player
 Config.Hail.playerFareMultiplier = 1.0 -- charge passengers more or less than NPCs
+
+-- ─────────────────────────────────────────────────────────────
+-- Phones
+-- Players call a cab from their phone, and drivers get calls on theirs.
+-- ─────────────────────────────────────────────────────────────
+Config.Phones = {}
+
+-- A Taxi app on lb-phone, qs-smartphone, gksphone, yseries and okokPhone.
+-- XS-Phone has a Call a cab button in its Services app instead.
+Config.Phones.app = true
+Config.Phones.appName = 'Taxi'
+
+-- Messages to this company in lb-phone's or gksphone's Services app call a
+-- cab too. '' turns it off.
+Config.Phones.company = 'taxi'
+
+-- npwd: calling or texting this number calls a cab. '' turns it off.
+Config.Phones.number = '555-8294'
 
 -- ─────────────────────────────────────────────────────────────
 -- Shift

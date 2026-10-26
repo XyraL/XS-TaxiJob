@@ -47,6 +47,9 @@ for (const file of files) {
     }
 
     for (const m of src.matchAll(/lib\.callback\.register\(\s*['"]([^'"]+)['"]/g)) registered.add(m[1]);
+    // server/admin.lua registers through guard(), which re-checks the ace
+    // before handing over to lib.callback.register.
+    for (const m of src.matchAll(/^\s*guard\(\s*['"]([^'"]+)['"]/gm)) registered.add(m[1]);
     for (const m of src.matchAll(/lib\.callback\.await\(\s*['"]([^'"]+)['"]/g)) add(awaited, m[1], file);
 }
 

@@ -1,10 +1,3 @@
-Taxi.isAdmin = false
-
-CreateThread(function()
-    Wait(2000)
-    Taxi.isAdmin = lib.callback.await('XS-TaxiJob:server:isAdmin', false) == true
-end)
-
 local function proxy(endpoint, callback)
     RegisterNUICallback(endpoint, function(data, cb)
         if not Taxi.isAdmin then
@@ -15,9 +8,18 @@ local function proxy(endpoint, callback)
     end)
 end
 
+CreateThread(function()
+    Wait(2000)
+    Taxi.isAdmin = lib.callback.await('XS-TaxiJob:server:isAdmin', false) == true
+end)
+
 proxy('adminState',         'XS-TaxiJob:server:adminState')
 proxy('adminSetReputation', 'XS-TaxiJob:server:adminSetReputation')
 proxy('adminEndShift',      'XS-TaxiJob:server:adminEndShift')
 proxy('adminClearFare',     'XS-TaxiJob:server:adminClearFare')
 proxy('adminSetting',       'XS-TaxiJob:server:adminSetting')
 proxy('adminWipe',          'XS-TaxiJob:server:adminWipe')
+proxy('adminLocations',     'XS-TaxiJob:server:adminLocations')
+proxy('adminRates',         'XS-TaxiJob:server:adminRates')
+proxy('adminSaveRates',     'XS-TaxiJob:server:adminSaveRates')
+proxy('adminResetRates',    'XS-TaxiJob:server:adminResetRates')

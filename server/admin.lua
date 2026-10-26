@@ -56,7 +56,9 @@ local function driverRow(src, driver)
         name = Framework.GetName(src) or driver.citizenid,
         onDuty = driver.onDuty == true,
         vehicle = driver.vehicle and driver.vehicle.label or nil,
-        plate = driver.vehicle and driver.vehicle.plate or nil,
+        plate = driver.vehicle and (driver.vehicle.assignedPlate or driver.vehicle.plate) or nil,
+        personal = driver.vehicle and driver.vehicle.personal == true or false,
+        location = driver.location and Locations.Get(driver.location) and Locations.Get(driver.location).name or nil,
         since = driver.startedAt and (os.time() - driver.startedAt) or 0,
         earned = driver.totals and driver.totals.earned or 0,
         fares = driver.totals and driver.totals.fares or 0,
@@ -170,4 +172,40 @@ guard('XS-TaxiJob:server:adminWipe', function(src, payload)
     Stats.Forget(citizenid)
 
     return { ok = true }
+end)
+
+guard('XS-TaxiJob:server:adminLocations', function()
+    local cabs = {}
+    for _, entry in ipairs(Config.Vehicles.list) do
+        cabs[#cabs + 1] = { model = entry.model, label = entry.label, tier = entry.tier }
+    end
+    return { ok = true, locations = Locations.Public(), cabs = cabs }
+end)
+
+guard('XS-TaxiJob:server:adminSaveLocation', function(src, payload)
+    payload = type(payload) == 'table' and payload or {}
+    local id, err = Locations.Save(payload.id, payload.data)
+    if not id then return { ok = false, error = err } end
+    return { ok = true, id = id, locations = Locations.Public() }
+end)
+
+guard('XS-TaxiJob:server:adminRates', function()
+    return { ok = true, rates = Rates.Public() }
+end)
+
+guard('XS-TaxiJob:server:adminSaveRates', function(src, payload)
+    local rates, err = Rates.Save(type(payload) == 'table' and payload.rates or nil)
+    if not rates then return { ok = false, error = err } end
+    return { ok = true, rates = rates }
+end)
+
+guard('XS-TaxiJob:server:adminResetRates', function()
+    return { ok = true, rates = Rates.Reset() }
+end)
+
+guard('XS-TaxiJob:server:adminDeleteLocation', function(src, payload)
+    payload = type(payload) == 'table' and payload or {}
+    local ok, err = Locations.Delete(payload.id)
+    if not ok then return { ok = false, error = err } end
+    return { ok = true, locations = Locations.Public() }
 end)

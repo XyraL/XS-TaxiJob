@@ -1,6 +1,6 @@
 <h1 align="center">XS-TaxiJob</h1>
 
-<p align="center">A civilian taxi job for <strong>QBox</strong> and <strong>QBCore</strong> — live meter, NPC and player fares, ride ratings and a reputation ladder.</p>
+<p align="center">A civilian taxi job for <strong>QBox</strong> and <strong>QBCore</strong>: a driver tablet, a live meter, NPC and player fares, depots you build in game, and a reputation ladder.</p>
 
 <p align="center">
   <a href="https://github.com/XyraL/XS-TaxiJob/releases"><img src="https://img.shields.io/github/v/release/XyraL/XS-TaxiJob?style=flat-square&color=f5bb55&label=release" alt="Latest release"></a>
@@ -17,121 +17,142 @@
   <a href="https://discord.gg/XRURAw4TM2">Discord</a>
 </p>
 
-<!-- SCREENSHOTS: drop 2-3 in-game shots here once captured -->
-
 ---
 
 ## What it is
 
-Talk to the dispatcher, take a cab against a deposit, and run fares. The meter
-starts when someone gets in and runs on distance plus waiting time. How you
-drive sets the tip, the tip feeds reputation, and reputation unlocks better
-cabs and a bigger cut of every fare.
+Sign on at a depot, take a cab against a deposit (or drive your own car where
+the depot allows it), and run fares. The meter starts when someone gets in and
+runs on distance plus waiting time. How you drive sets the tip, the tip feeds
+reputation, and reputation unlocks better cabs and a bigger cut of every fare.
 
-No whitelist. Anyone can drive.
-
+Anyone can drive unless you set a job for it.
 
 ## Three ways to get work
 
-**Put the lamp on and drive.** People on the pavement flag the cab down as you
-pass. Pull over and they get in; drive on and they do not. `/lamp` turns it off
-when you are heading back to the depot and would rather not be stopped.
+**Put the lamp on and drive.** People on the pavement flag the cab down. The
+one waving gets a flashing blip on your map and a marker over their head, and
+you're told which side of the road they're on. Pull over and they get in. `/lamp`
+turns it off.
 
-**Call dispatch.** A pickup anywhere on the road network, with a drop-off the
-other side of it. The passenger is stood at the kerb by the time you get there
-and walks to the cab rather than waiting for you to park on the marker.
+**Find a fare.** Dispatch sends a pickup anywhere on the road network, with a
+drop-off across town. The passenger is waiting at the kerb when you get there.
 
-**Someone rings for a cab.** A player types `/taxi` and every driver with a
-lamp on gets the call. First to take it gets it. That one is open-ended — no
-destination, the meter runs until you end the ride where they ask.
+**Someone calls a cab.** A player calls from their phone or types `/taxi`, and
+every driver with the lamp on gets the call on the tablet and their phone. The
+first to accept takes it. There's no set destination: the meter runs until you
+end the ride where they asked to go.
 
+## The driver tablet
+
+Press **F6** or type `/cab`. On shift it opens anywhere. Off shift it opens at
+a depot, and anywhere else it sets your GPS to the nearest one.
+
+- **Calls**: player calls on a map, with accept and pass
+- **Fare**: the live meter and the job you're on
+- **Shift**: sign on and off, the lamp, time and takings
+- **Earnings**, **Record**, **Cabs** and the **Board** (leaderboard)
+
+Staff with the admin ace also get **Drivers**, **Dispatch** and **Depots**.
+
+## Depots
+
+Build them in game. Open the tablet as an admin, go to **Depots** and make a
+new one:
+
+- Stand where the dispatcher should be and set the desk
+- Park where cabs should appear and add a bay (up to 16)
+- Pick the blip icon, colour and size
+- Choose which cabs it rents, and if it needs a job
+- Turn on **Own cars** to let drivers use a car they own
+
+Changes reach every player straight away. The first depot comes from
+`Config.Depot.first` the first time the script starts. After that, edit it in
+game.
+
+## Own cars
+
+At a depot with **Own cars** on, a driver can sign on in a car registered to
+them. They have to be in the driver's seat, and it has to be a car (no bikes).
+There's no deposit to pay and none to get back. `Config.PersonalVehicles`
+sets the fare rate and your vehicles table if it isn't `player_vehicles`.
+
+## Phones
+
+Found on their own. Nothing to set up.
+
+| Phone | What you get |
+| ----- | ------------ |
+| XS-Phone | Call a cab card in the Services app, and call alerts for drivers |
+| lb-phone | Taxi app, texts to the `taxi` company call a cab, alerts |
+| qs-smartphone, qs-smartphone-pro | Taxi app, alerts |
+| gksphone | Taxi app, messages to the `taxi` service call a cab, alerts |
+| yseries, okokPhone | Taxi app, alerts |
+| npwd | Call or text 555-8294 to call a cab, alerts |
+| high-phone, roadphone, 17mov_Phone, qb-phone | Alerts |
+
+The Taxi app shows how many cabs are free, then who took your call and their
+plate. `Config.Phones` sets the app name, the company and the number.
 
 ## Uniforms
 
-`Config.Uniform.enabled` puts drivers in cab company kit for the length of a
-shift and hands their own clothes back when they sign off.
-
-It writes clothing components straight onto the ped, so there is no appearance
-resource to install and nothing to keep in sync. Build the outfit you want on a
-character with your clothing menu, read the component numbers off it, and put
-them in `Config.Uniform.male` / `.female`.
-
-If you would rather your own appearance resource handled it, set
-`useExport = true` and `exportResource` to its name. It needs to export
-`SetTaxiUniform(outfit)` and `ClearTaxiUniform()`. If either is missing or
-throws, the components are used instead, so a broken export downgrades rather
-than leaving someone half-dressed.
-
-## The terminal
-
-`/cab` opens it from wherever you are. At the depot anyone can use it; away
-from it you have to be signed on, so the cab has a terminal in it without the
-depot becoming something you can skip. Put a key in `Config.Depot.key` if you
-want one, or bind it yourself under Settings, Key Bindings, FiveM.
+`Config.Uniform.enabled` puts drivers in cab company clothes for the shift and
+gives their own clothes back when they sign off. Put the component numbers in
+`Config.Uniform.male` and `.female`, or set `useExport` to hand it to your own
+appearance script (it needs `SetTaxiUniform(outfit)` and `ClearTaxiUniform()`).
 
 ## Admin
 
-Grant `Config.AdminAce` (default `xstaxi.admin`) and an **Admin** tab appears
-in the terminal. Nobody else can see it, and every callback behind it checks the
-ace again on the server — the hidden tab is a convenience, not the security.
+Grant `Config.AdminAce` (default `xstaxi.admin`) to see the admin pages. Every
+action checks the ace again on the server.
 
-It shows who is signed on, what they are driving, the fare they are running and
-what they have taken this shift, plus all-time payout across the server. Per
-driver: adjust standing, clear a fare that has got stuck, or end their shift.
-
-The three switches at the top — pause dispatch, allow hailing, fare multiplier —
-take effect immediately and are deliberately not saved. A restart puts the
-server back to whatever config.lua says.
+- **Drivers**: who's signed on, their car, fare and takings. Adjust standing,
+  clear a stuck fare, end a shift or wipe a driver's record
+- **Dispatch**: pause dispatch, allow player calls, and a fare multiplier for
+  events. These reset on restart
+- **Pay & rates**: the meter, night and cross-town rates, the deposit, tips
+  by rating, and each cab's rate and tier's bonus. Saved, and they start on
+  the next fare. **Use config.lua** puts the config values back
+- **Depots**: the builder above
 
 ## Requirements
 
 - `ox_lib`
 - `oxmysql`
-- Either `qbx_core` **or** `qb-core` — the bridge auto-detects which.
-- `ox_target` or `qb-target` if you run one. The dispatcher at the depot is a
-  ped you talk to, which needs one of them; without either it falls back to a
-  marker and an E prompt on the same spot and the job works exactly the same.
-- A vehicle-keys resource if your server runs one. `Config.Bridges.keys` is on
-  `'auto'` and finds `qbx_vehiclekeys`, `qs-vehiclekeys` or `qb-vehiclekeys` by
-  itself. Without this, the rented cab's engine will not start.
+- `qbx_core` or `qb-core`
 
 ## Install
 
 1. Drop the `XS-TaxiJob` folder into your `resources`.
-2. **No SQL import needed.** The three tables create themselves on first start
-   from `sql/install.sql`.
-3. Add `ensure XS-TaxiJob` to your `server.cfg`, after ox_lib, oxmysql, your
-   framework and your keys resource.
-4. Grant the admin ACE if you want the staff commands:
+2. Add `ensure XS-TaxiJob` to your `server.cfg`, after ox_lib, oxmysql, your
+   framework and your keys script.
+3. Grant the admin ace:
    ```
    add_ace group.admin xstaxi.admin allow
    ```
 
+No SQL to import. The tables create themselves on first start.
+
+## Updating from 1.x
+
+Replace the whole folder, **config.lua included**, since 2.0 adds new settings.
+Your drivers, reputation and fare history stay. Your depot is created from the
+new config the first time it starts, then you edit it in game.
+
 ## How a shift runs
 
-1. Head to the Downtown Cab Co. blip and use the terminal.
-2. Pick a cab from the roster. The deposit is held until you bring it back.
-3. **Find a fare** from the terminal, or wait for someone to call one in.
-4. Drive to the pickup and stop. The passenger gets in and the meter starts.
-5. Take them where they are going. Stop at the drop-off and you get paid.
-6. Park in a depot bay and sign off to get the deposit back. Damage comes off it.
-
-## Fares
-
-**NPC fares** are pulled from `Config.Fares.points`, grouped by area so a trip
-across town is worth more than a lap of the block. Points are gated by tier, so
-airport runs and county hauls open up as you climb.
-
-**Player fares** work differently. Anyone can `/taxi` and the call goes out to
-every signed-on driver in range; first to accept takes it. There is no set
-destination — the meter runs from pickup until the driver ends it with
-`/endride`, wherever the passenger asked to go. The passenger pays the meter.
+1. Go to a depot and open the tablet.
+2. Rent a cab, or sign on in your own car if the depot allows it.
+3. Turn the lamp on, find a fare, or wait for a call.
+4. Stop at the pickup. The passenger gets in and the meter starts.
+5. Drop them off and get paid.
+6. Park a rented cab in any depot's bay and sign off to get the deposit back.
+   Damage comes off it.
 
 ## Rating and reputation
 
-Every fare starts at five stars. You lose them for hitting things, sitting on
-the throttle, flipping the cab, or getting your passenger hurt. The star rating
-sets the tip:
+Every fare starts at five stars. You lose them for hitting things, flooring
+it, flipping the cab or hurting your passenger. The stars set the tip:
 
 | Stars | Tip |
 | ----- | --- |
@@ -140,54 +161,57 @@ sets the tip:
 | 3 | 7% |
 | 2 or 1 | nothing |
 
-Reputation comes off the same rating, so a careful driver climbs roughly twice
-as fast as a reckless one. Tiers unlock cabs and raise the multiplier on every
-fare:
+Reputation comes off the same rating. Tiers unlock cabs and raise every fare:
 
 | Tier | Rep | Cab unlocked | Fare bonus |
 | ---- | --- | ------------ | ---------- |
-| Trainee | 0 | Taxi | — |
+| Trainee | 0 | Taxi | none |
 | Driver | 40 | Stanier | +8% |
 | Veteran | 140 | Primo Custom | +16% |
 | Elite | 320 | Baller | +25% |
 | Legend | 650 | Stretch | +35% |
 
+These are the defaults. Change tips, cab rates and tier bonuses in game under
+**Pay & rates**.
+
 ## Commands
 
 | Command | Who | What |
 | ------- | --- | ---- |
-| `/taxi` | anyone | Call a cab to where you are standing. |
-| `/endride` | driver | End an open-ended hailed ride and take payment. |
-| `/accepthail [id]` | driver | Accept a waiting call. The id is optional with one call waiting. |
+| `/cab` (F6) | anyone | Open the driver tablet. |
+| `/lamp` | driver | Turn the roof lamp on or off. |
+| `/taxi` | anyone | Call a cab to where you're standing. |
+| `/canceltaxi` | anyone | Cancel your call. |
+| `/endride` | driver | End a called ride and take payment. |
+| `/accepthail [id]` | driver | Accept a call without opening the tablet. |
 | `/taxistats` | driver | Your tier, reputation, fares and rating. |
 | `/taxirep <id> <n>` | admin | Adjust a driver's reputation. |
-| `/taxiendshift <id>` | admin | Force a driver off shift. |
+| `/taxiendshift <id>` | admin | End a driver's shift. |
 
-## Config
+## Works with
 
-Everything lives in `config.lua`: the depot and its cab bays, the roster and
-what each cab pays, meter pricing, night rates, the penalty and tip tables, the
-reputation ladder, and every pickup and drop-off point.
+Found on their own. The job runs without any of them.
 
-The pickup list ships with real Los Santos locations. Add your own by appending
-to `Config.Fares.points` with an `area` and a `tier`.
+- **Vehicle keys**: qbx_vehiclekeys, Renewed-Vehiclekeys, wasabi_carlock,
+  mk_vehiclekeys, jaksam's vehicles_keys, qs-vehiclekeys, qb-vehiclekeys,
+  cd_garage and okokGarage
+- **Fuel**: cdn-fuel, ps-fuel, lc_fuel, lj-fuel, qb-fuel, Renewed-Fuel,
+  okokGasStation, ti_fuel, BigDaddy-Fuel, x-fuel, rcore_fuel, qs-fuelstations,
+  ND_Fuel, melons_fuel, LegacyFuel and ox_fuel. Cabs leave the depot full
+- **Target**: ox_target or qb-target to talk to the dispatcher. Without one
+  it's a marker and an E prompt
+- **Phones**: see Phones above
 
-To make driving a job players have to be hired for, set
-`Config.Depot.requiredJob` to that job, for example `'taxi'`.
-
-## Integrations
-
-Optional and auto-detected. Nothing here is required, and the job runs on its
-own with none of it installed.
-
-- **XS-Phone** — hail notifications reach the passenger's phone instead of a
-  plain notification.
-- **ox_target / qb-target** — the depot terminal. Falls back to a marker.
-- **Vehicle keys** — see Requirements.
-
-Two exports are available for your own scripts:
+## Exports
 
 ```lua
-exports['XS-TaxiJob']:GetDriverSummary(source)  -- tier, rep, rating, totals
+-- server
 exports['XS-TaxiJob']:IsDriverOnDuty(source)    -- boolean
+exports['XS-TaxiJob']:GetDriverSummary(source)  -- tier, rep, rating, totals
+exports['XS-TaxiJob']:RequestRide(source)       -- call a cab for a player
+exports['XS-TaxiJob']:CancelRide(source)
+exports['XS-TaxiJob']:GetRideStatus(source)     -- none, waiting, accepted or riding
+exports['XS-TaxiJob']:GetFreeDrivers()
+exports['XS-TaxiJob']:GetDriversOnShift()
+exports['XS-TaxiJob']:GetLocations()            -- every depot
 ```

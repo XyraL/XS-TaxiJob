@@ -54,23 +54,27 @@ end
 function MeterAmount()
     if not Meter.running and Meter.distance == 0 then return 0 end
 
-    local amount = Config.Meter.flagfall
-        + (Meter.distance / 1000.0) * Config.Meter.perKm
-        + (Meter.waiting / 60.0) * Config.Meter.perWaitingMinute
+    local fare = Taxi.fare or {}
+    local r = fare.rates or {}
 
-    if Taxi.fare and Taxi.fare.crossTown then amount = amount * Config.Fares.crossTownBonus end
+    local amount = (r.flagfall or Config.Meter.flagfall)
+        + (Meter.distance / 1000.0) * (r.perKm or Config.Meter.perKm)
+        + (Meter.waiting / 60.0) * (r.perWaitingMinute or Config.Meter.perWaitingMinute)
+
+    if fare.crossTown then amount = amount * (r.crossTown or Config.Fares.crossTownBonus) end
 
     -- The server decides this when it builds the fare and sends it down.
     -- Working it out here off the in-game clock, while the server read the
     -- host machine's, is why the dash and the payout disagreed.
-    if Taxi.fare and Taxi.fare.night then
-        amount = amount * Config.Meter.nightBonus.multiplier
+    if fare.night then
+        amount = amount * (r.night or Config.Meter.nightBonus.multiplier)
     end
 
-    amount = amount * ((Taxi.vehicle and Taxi.vehicle.rate) or 1.0)
-    amount = amount * ((Taxi.stats and Taxi.stats.fareMultiplier) or 1.0)
+    amount = amount * (r.cab or (Taxi.vehicle and Taxi.vehicle.rate) or 1.0)
+    amount = amount * (r.tier or (Taxi.stats and Taxi.stats.fareMultiplier) or 1.0)
+    amount = amount * (fare.extra or 1.0)
 
-    return math.max(Config.Meter.minimumFare, math.floor(amount + 0.5))
+    return math.max(r.minimumFare or Config.Meter.minimumFare, math.floor(amount + 0.5))
 end
 
 local function trackQuality(speed)
@@ -168,12 +172,21 @@ function StartMeterLoop()
                     kind = Taxi.fare and Taxi.fare.kind or nil,
                     night = Taxi.fare and Taxi.fare.night or false,
                     crossTown = Taxi.fare and Taxi.fare.crossTown or false,
-                    flagfall = Config.Meter.flagfall,
+                    flagfall = (Taxi.fare and Taxi.fare.rates and Taxi.fare.rates.flagfall) or Config.Meter.flagfall,
                     pickupIn = pickupSecondsLeft(),
                     away = distanceToTarget(),
                     totals = Taxi.totals,
                     vehicle = Taxi.vehicle and Taxi.vehicle.label or nil,
                     lamp = Taxi.lamp == true,
+                    passenger = Taxi.fare and Taxi.fare.passengerName or nil,
+                    fareId = Taxi.fare and Taxi.fare.id or nil,
+                    pickupAt = Taxi.fare and Taxi.fare.pickup and { x = Taxi.fare.pickup.x, y = Taxi.fare.pickup.y } or nil,
+                    dropoffAt = Taxi.fare and Taxi.fare.dropoff and not Taxi.fare.openEnded
+                        and { x = Taxi.fare.dropoff.x, y = Taxi.fare.dropoff.y } or nil,
+                    me = (function()
+                        local at = GetEntityCoords(PlayerPedId())
+                        return { x = at.x, y = at.y, h = GetEntityHeading(PlayerPedId()) }
+                    end)(),
                 },
             })
 
