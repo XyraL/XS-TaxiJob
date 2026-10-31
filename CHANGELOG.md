@@ -2,8 +2,8 @@
 
 ## 2.0.1
 
-- Switching character ends your shift, returns the cab and clears fares and ride offers
-- A passenger who switches character mid-ride is not charged for it
+- Logging out ends your shift, returns the cab and clears fares and ride offers
+- A passenger who logs out mid-ride is not charged for it
 
 Replace everything except your config.lua. No SQL to run.
 
