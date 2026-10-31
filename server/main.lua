@@ -405,14 +405,21 @@ lib.callback.register('XS-TaxiJob:server:nearestDepot', function(src)
     return { id = location.id, name = location.name, x = desk.x, y = desk.y, z = desk.z }
 end)
 
-AddEventHandler('playerDropped', function()
-    local src = source
+local function leave(src, reason)
     local citizenid = Drivers[src] and Drivers[src].citizenid or seenCitizenIds[src]
 
-    if Drivers[src] then closeShift(src, 'dropped') end
+    if Drivers[src] then closeShift(src, reason) end
 
     if citizenid then Stats.Forget(citizenid) end
     seenCitizenIds[src] = nil
+end
+
+AddEventHandler('playerDropped', function()
+    leave(source, 'dropped')
+end)
+
+AddEventHandler('QBCore:Server:OnPlayerUnload', function(src)
+    leave(tonumber(src) or source, 'logout')
 end)
 
 AddEventHandler('onResourceStop', function(resource)

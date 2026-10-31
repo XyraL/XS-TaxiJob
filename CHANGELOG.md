@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+- Switching character ends your shift, returns the cab and clears fares and ride offers
+- A passenger who switches character mid-ride is not charged for it
+
+Replace everything except your config.lua. No SQL to run.
+
 ## 2.0.0
 
 A new driver tablet, depots you build in game, own cars and phone support.

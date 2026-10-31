@@ -340,6 +340,8 @@ lib.callback.register('XS-TaxiJob:server:completeFare', function(src, reported)
             settled.tip = 0
             Phone.Notify(fare.passengerSrc, 'Taxi', 'You could not cover the fare.')
         end
+    elseif fare.kind == 'player' then
+        settled.tip = 0
     end
 
     local payout = settled.fare + settled.tip

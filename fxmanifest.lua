@@ -5,7 +5,7 @@ lua54 'yes'
 name 'XS-TaxiJob'
 author 'XyraL'
 description 'Civilian taxi job with a driver tablet, live meter, NPC and player fares, depots you build in game, and phone support. Standalone for QBox/QBCore.'
-version '2.0.0'
+version '2.0.1'
 
 dependencies {
     'ox_lib',

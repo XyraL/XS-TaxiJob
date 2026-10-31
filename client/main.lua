@@ -284,6 +284,31 @@ RegisterNetEvent('XS-TaxiJob:client:forceEndShift', function()
     end
 end)
 
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+    CloseTablet()
+    if Taxi.summaryOpen then
+        Taxi.summaryOpen = false
+        SetNuiFocus(false, false)
+    end
+
+    if not Taxi.onDuty then return end
+
+    FlagdownClear()
+    ClearFareState()
+    ClearRideOffers()
+    if Taxi.personal then ReleasePersonalCar() else DespawnCab() end
+
+    Taxi.onDuty = false
+    Taxi.lamp = false
+    Taxi.vehicle = nil
+    Taxi.personal = false
+    Taxi.location = nil
+    Taxi.stats = nil
+    Taxi.totals = { fares = 0, earned = 0, distance = 0 }
+    Uniform.Remove()
+    StopMeterLoop()
+end)
+
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     if Taxi.uiOpen or Taxi.summaryOpen then SetNuiFocus(false, false) end

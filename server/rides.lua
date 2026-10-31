@@ -354,8 +354,7 @@ exports('GetRideStatus', function(src) return Rides.Status(tonumber(src)) end)
 exports('GetDriversOnShift', function() return Rides.DriversOnShift() end)
 exports('GetFreeDrivers', function() return Rides.DriversFree() end)
 
-AddEventHandler('playerDropped', function()
-    local src = source
+local function leave(src, reason)
     local id = pendingFor(src)
     if id then
         local request = requests[id]
@@ -368,5 +367,15 @@ AddEventHandler('playerDropped', function()
         driver.fare = nil
         TriggerClientEvent('XS-TaxiJob:client:fareCancelled', driverSrc)
         Framework.Notify(driverSrc, 'Your passenger left the city.', 'inform')
+    elseif driverSrc and reason == 'logout' then
+        fare.passengerSrc = nil
     end
+end
+
+AddEventHandler('playerDropped', function()
+    leave(source, 'dropped')
+end)
+
+AddEventHandler('QBCore:Server:OnPlayerUnload', function(src)
+    leave(tonumber(src) or source, 'logout')
 end)
