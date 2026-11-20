@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.2] — 2026-11-20
+
+- Fixed tablet colours that did not show in game
+
+Replace everything except your config.lua. No SQL to run.
+
 ## 2.0.1
 
 - Logging out ends your shift, returns the cab and clears fares and ride offers

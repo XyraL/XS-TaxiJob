@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Taxi</title>
 <style>
-:root{--bg:#0d0d10;--card:#17171c;--line:#26262e;--text:#f1f1f3;--dim:#9a9aa4;--faint:#63636c;--amber:#f5b229;--ink:#1a1305;--red:#ff5a66;--green:#3ddc97}
+:root{--bg:#0d0d10;--card:#17171c;--line:#26262e;--text:#f1f1f3;--dim:#9a9aa4;--faint:#63636c;--amber:#f5b229;--amber-rgb:245,178,41;--ink:#1a1305;--red:#ff5a66;--red-rgb:255,90,102;--green:#3ddc97}
 [data-theme="light"]{--bg:#f3f3f6;--card:#ffffff;--line:#e2e2e8;--text:#15151a;--dim:#5d5d68;--faint:#9a9aa4}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font:400 1rem/1.4 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;user-select:none}
@@ -25,8 +25,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font:400 1rem/1.4 s
 .btn{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;height:3.2rem;border:0;border-radius:.9rem;background:var(--amber);color:var(--ink);font:700 1.05rem/1 inherit;cursor:pointer}
 .btn:active{transform:scale(.98)}
 .btn[disabled]{opacity:.5}
-.btn.ghost{background:transparent;color:var(--red);border:1px solid color-mix(in srgb,var(--red) 40%,transparent)}
-.pulse{width:.65rem;height:.65rem;border-radius:50%;background:var(--amber);box-shadow:0 0 0 0 color-mix(in srgb,var(--amber) 60%,transparent);animation:p 1.4s infinite}
+.btn.ghost{background:transparent;color:var(--red);border:1px solid rgba(var(--red-rgb),.4)}
+.pulse{width:.65rem;height:.65rem;border-radius:50%;background:var(--amber);box-shadow:0 0 0 0 rgba(var(--amber-rgb),.6);animation:p 1.4s infinite}
 @keyframes p{70%{box-shadow:0 0 0 .7rem transparent}100%{box-shadow:0 0 0 0 transparent}}
 .line{display:flex;align-items:center;gap:.6rem}
 .err{min-height:1.2rem;font-size:.85rem;color:var(--red);text-align:center}
